@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supabase } from './lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -521,15 +522,35 @@ export default function App() {
     setSelectedProductIds([]);
   }
 
-  function handleAuth() {
+  async function handleAuth() {
     setAuthError("");
     if (!authEmail || !authPassword) { setAuthError("Compila tutti i campi."); return; }
     if (authMode === "signup" && !authName) { setAuthError("Inserisci il tuo nome."); return; }
     if (authPassword.length < 6) { setAuthError("La password deve essere di almeno 6 caratteri."); return; }
-    const name = authMode === "signup" ? authName : authEmail.split("@")[0];
-    const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-    setUser({ name, email: authEmail, initials, plan: authMode === "signup" ? authPlan : "free" });
-    setScreen("app");
+
+    if (authMode === "signup") {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+        options: { data: { name: authName, plan: authPlan } }
+      });
+      if (error) { setAuthError(error.message); return; }
+      const name = authName;
+      const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+      setUser({ name, email: authEmail, initials, plan: authPlan });
+      setScreen("app");
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+      if (error) { setAuthError(error.message); return; }
+      const name = data.user.user_metadata?.name || authEmail.split("@")[0];
+      const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+      const plan = data.user.user_metadata?.plan || "free";
+      setUser({ name, email: authEmail, initials, plan });
+      setScreen("app");
+    }
   }
 
   function addUnderlying(raw) {
@@ -879,7 +900,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={() => { setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
