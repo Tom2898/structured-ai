@@ -523,12 +523,12 @@ export default function App() {
   }
 async function handleStripeCheckout(plan) {
   if (!plan.priceId) {
-    setAuthError("Errore: priceId mancante per questo piano.");
+    setAuthError("Errore: priceId mancante.");
     return false;
   }
   setAuthError("Reindirizzamento a Stripe...");
   try {
-    const res = await fetch("/api/checkout", {
+    const res = await fetch("https://structured-ai-l4gg.vercel.app/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ priceId: plan.priceId, email: authEmail || "" })
@@ -542,7 +542,7 @@ async function handleStripeCheckout(plan) {
       return false;
     }
   } catch (err) {
-    setAuthError("Fetch error verso /api/checkout: " + err.message);
+    setAuthError("Errore connessione checkout: " + err.message);
     return false;
   }
 }
@@ -564,7 +564,7 @@ async function handleStripeCheckout(plan) {
       if (authPlan === 'retail') {
         const retailPlan = PLANS.find(p => p.id === 'retail');
         await handleStripeCheckout(retailPlan);
-        return; // stay on auth screen — Stripe redirect or error message will show
+        return;
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
       setScreen("app");
