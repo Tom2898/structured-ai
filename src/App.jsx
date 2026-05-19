@@ -522,7 +522,7 @@ export default function App() {
     setSelectedProductIds([]);
   }
 async function handleStripeCheckout(plan) {
-  if (!plan.priceId) return;
+  if (!plan.priceId) return false;
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
@@ -530,10 +530,16 @@ async function handleStripeCheckout(plan) {
       body: JSON.stringify({ priceId: plan.priceId, email: authEmail || "" })
     });
     const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    else alert("Errore nel checkout. Riprova.");
+    if (data.url) {
+      window.location.href = data.url;
+      return true;
+    } else {
+      setAuthError("Errore nel checkout Stripe. Riprova.");
+      return false;
+    }
   } catch (err) {
-    alert("Errore: " + err.message);
+    setAuthError("Errore nella connessione al checkout: " + err.message);
+    return false;
   }
 }
   async function handleAuth() {
@@ -552,8 +558,15 @@ async function handleStripeCheckout(plan) {
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
       if (authPlan === 'retail') {
-        await handleStripeCheckout({ priceId: PLANS.find(p => p.id === 'retail')?.priceId });
-        return;
+        const retailPlan = PLANS.find(p => p.id === 'retail');
+        if (retailPlan?.priceId) {
+          setAuthError("Reindirizzamento a Stripe in corso...");
+          const ok = await handleStripeCheckout(retailPlan);
+          if (!ok) {
+            // Stripe failed — error already shown by handleStripeCheckout
+          }
+          return;
+        }
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
       setScreen("app");
