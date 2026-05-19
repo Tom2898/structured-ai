@@ -1,7 +1,14 @@
 {
   "functions": {
+    "api/checkout.js": {
+      "memory": 512
+    },
     "api/webhook.js": {
       "bodyParser": false
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
