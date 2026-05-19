@@ -557,9 +557,6 @@ async function handleStripeCheckout(plan) {
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
       setScreen("app");
-      }
-      setUser({ name, email: authEmail, initials, plan: authPlan });
-      setScreen("app");
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: authEmail,
