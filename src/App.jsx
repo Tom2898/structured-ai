@@ -559,16 +559,6 @@ async function handleStripeCheckout(plan) {
       setScreen("app");
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
-      await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail, name, plan: authPlan })
-      });
-      await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail, name, plan: authPlan })
-      });
       setScreen("app");
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
