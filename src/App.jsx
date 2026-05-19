@@ -43,7 +43,7 @@ const CAT_COLOR = {
 
 const PLANS = [
   { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
-  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 20, features: ["20 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false },
+  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 20, features: ["20 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "prod_UXeUm0rcPNPtFh" },
   { id: "pro", name: "Pro", priceMonthly: "€49", priceAnnual: "€39", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "Risparmia €120/anno" },
   { id: "unlimited", name: "Unlimited", priceMonthly: "€199", priceAnnual: "€159", period: "/mese", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "Risparmia €480/anno" },
 ];
@@ -521,7 +521,21 @@ export default function App() {
     setObjective(val);
     setSelectedProductIds([]);
   }
-
+async function handleStripeCheckout(plan) {
+  if (!plan.priceId) return;
+  try {
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceId: plan.priceId, email: authEmail || "" })
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    else alert("Errore nel checkout. Riprova.");
+  } catch (err) {
+    alert("Errore: " + err.message);
+  }
+}
   async function handleAuth() {
     setAuthError("");
     if (!authEmail || !authPassword) { setAuthError("Compila tutti i campi."); return; }
@@ -815,7 +829,13 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       <div className="plan-divider" />
       <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
       <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
-        onClick={() => { if (!comingSoon) { setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth"); } }}>
+        onClick={() => { if (!comingSoon) {
+  if (plan.priceId) {
+    handleStripeCheckout(plan);
+  } else {
+    setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth");
+  }
+} }}>
         {comingSoon ? "Prossimamente" : plan.cta}
       </button>
     </div>
