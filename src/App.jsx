@@ -556,6 +556,9 @@ async function handleStripeCheckout(plan) {
         return;
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
+      setScreen("app");
+      }
+      setUser({ name, email: authEmail, initials, plan: authPlan });
       await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
