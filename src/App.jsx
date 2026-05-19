@@ -801,24 +801,26 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
             {billingAnnual && <span className="billing-save-badge">Risparmia fino a €480/anno</span>}
           </div>
           <div className="plans-grid">
-            {PLANS.map(plan => {
-              const price = billingAnnual ? plan.priceAnnual : plan.priceMonthly;
-              return (
-                <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}`}>
-                  {plan.highlight && <div className="plan-badge">BEST VALUE</div>}
-                  <div className="plan-name">{plan.name.toUpperCase()}</div>
-                  <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>
-                  {billingAnnual && plan.annualNote && <div className="plan-annual-note">✓ {plan.annualNote}</div>}
-                  <div className="plan-divider" />
-                  <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
-                  <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
-                    onClick={() => { setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth"); }}>
-                    {plan.cta}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+{PLANS.map(plan => {
+  const price = billingAnnual ? plan.priceAnnual : plan.priceMonthly;
+  const comingSoon = plan.id === "pro" || plan.id === "unlimited";
+  return (
+    <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}${comingSoon ? " coming-soon-card" : ""}`}
+      style={comingSoon ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none", position: "relative" } : {}}>
+      {comingSoon && <div style={{ position:"absolute", top:12, right:12, background:"#6b7280", color:"#fff", fontSize:9, padding:"2px 8px", borderRadius:99, letterSpacing:"0.08em", fontFamily:"'DM Mono',monospace" }}>PROSSIMAMENTE</div>}
+      {plan.highlight && !comingSoon && <div className="plan-badge">BEST VALUE</div>}
+      <div className="plan-name">{plan.name.toUpperCase()}</div>
+      <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>
+      {billingAnnual && plan.annualNote && <div className="plan-annual-note">✓ {plan.annualNote}</div>}
+      <div className="plan-divider" />
+      <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
+      <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
+        onClick={() => { if (!comingSoon) { setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth"); } }}>
+        {comingSoon ? "Prossimamente" : plan.cta}
+      </button>
+    </div>
+  );
+})}          </div>
         </div>
         <div className="landing-footer">© 2025 StructuredAI · Solo a scopo informativo · Non costituisce consulenza finanziaria</div>
       </div>
