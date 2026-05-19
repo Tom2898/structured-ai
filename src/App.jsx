@@ -551,7 +551,16 @@ async function handleStripeCheckout(plan) {
       if (error) { setAuthError(error.message); return; }
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+      if (authPlan === 'retail') {
+        await handleStripeCheckout({ priceId: PLANS.find(p => p.id === 'retail')?.priceId });
+        return;
+      }
       setUser({ name, email: authEmail, initials, plan: authPlan });
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail, name, plan: authPlan })
+      });
       await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
