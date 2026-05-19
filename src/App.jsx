@@ -521,7 +521,7 @@ export default function App() {
     setObjective(val);
     setSelectedProductIds([]);
   }
-async function handleStripeCheckout(plan) {
+async function handleStripeCheckout(plan) { /* STRIPE_FIX_v2 */
   if (!plan.priceId) {
     setAuthError("Errore: priceId mancante.");
     return false;
