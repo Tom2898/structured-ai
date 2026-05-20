@@ -494,25 +494,27 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
       const plan = params.get("plan") || "retail";
-      const tryLogin = (attempts) => {
-        supabase.auth.getSession().then(({ data }) => {
-          const user = data?.session?.user;
-          if (user) {
-            const name = user.user_metadata?.name || user.email.split("@")[0];
-            const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
-            setUser({ name, email: user.email, initials, plan });
-            setScreen("app");
-            window.history.replaceState({}, "", "/");
-          } else if (attempts > 0) {
-            setTimeout(() => tryLogin(attempts - 1), 1000);
-          } else {
-            setScreen("auth");
-            setAuthMode("login");
-            window.history.replaceState({}, "", "/");
-          }
-        });
-      };
-      tryLogin(5);
+      window.history.replaceState({}, "", "/");
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user) {
+          const u = session.user;
+          const name = u.user_metadata?.name || u.email.split("@")[0];
+          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+          setUser({ name, email: u.email, initials, plan });
+          setScreen("app");
+          subscription.unsubscribe();
+        }
+      });
+      // Also try immediately
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session?.user) {
+          const u = data.session.user;
+          const name = u.user_metadata?.name || u.email.split("@")[0];
+          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+          setUser({ name, email: u.email, initials, plan });
+          setScreen("app");
+        }
+      });
     }
   }, []);
   const [authError, setAuthError] = useState("");
