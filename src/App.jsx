@@ -561,7 +561,7 @@ async function handleStripeCheckout(plan) { /* STRIPE_FIX_v2 */
       if (error) { setAuthError(error.message); return; }
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-      if (authPlan === 'retail') {
+      console.log('RETAIL CHECK REACHED', authPlan); if (authPlan === 'retail') {
         const retailPlan = PLANS.find(p => p.id === 'retail');
         await handleStripeCheckout(retailPlan);
         return;
