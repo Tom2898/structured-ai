@@ -526,18 +526,26 @@ export default function App() {
   const [authPlan, setAuthPlan] = useState("free");
 
   // Helper: build user object reading plan from subscriptions table (source of truth)
-  async function buildUserFromSession(sessionUser) {
+  async function buildUserFromSession(sessionUser, { waitForActive = false } = {}) {
     const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
     const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-    let plan = "free";
+    let plan = sessionUser.user_metadata?.plan || "free";
     try {
-      const { data: subData } = await supabase
-        .from("subscriptions")
-        .select("plan,status")
-        .eq("email", sessionUser.email)
-        .single();
-      if (subData?.status === "active" && subData?.plan) plan = subData.plan;
-      else if (subData?.status === "cancelling") plan = "free";
+      // If coming from Stripe, poll up to 8s for webhook to write active status
+      const maxAttempts = waitForActive ? 8 : 1;
+      for (let i = 0; i < maxAttempts; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 1000));
+        const { data: subData } = await supabase
+          .from("subscriptions")
+          .select("plan,status")
+          .eq("email", sessionUser.email)
+          .single();
+        if (subData?.status === "active" && subData?.plan) {
+          plan = subData.plan;
+          break;
+        }
+        if (subData?.status === "cancelling") { plan = "free"; break; }
+      }
     } catch (_) {}
     return { name, email: sessionUser.email, initials, plan };
   }
@@ -550,34 +558,26 @@ export default function App() {
 
     if (isStripeReturn) window.history.replaceState({}, "", "/");
 
-    async function initSession(retries = 3) {
+    async function initSession() {
       const { data } = await supabase.auth.getSession();
       const sessionUser = data?.session?.user;
 
-      if (!sessionUser && retries > 0) {
-        // Session not ready yet — wait and retry
-        await new Promise(r => setTimeout(r, 800));
-        return initSession(retries - 1);
-      }
-
       if (sessionUser) {
         if (isStripeReturn) {
-          // Trust URL param immediately — webhook may not have fired yet
-          await supabase.auth.updateUser({ data: { plan: urlPlan } });
-          const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
-          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-          setUser({ name, email: sessionUser.email, initials, plan: urlPlan });
+          // Poll Supabase until webhook writes active status (up to 8s)
+          const userObj = await buildUserFromSession(sessionUser, { waitForActive: true });
+          // Also persist to auth metadata as backup
+          await supabase.auth.updateUser({ data: { plan: userObj.plan } });
+          setUser(userObj);
         } else {
           const userObj = await buildUserFromSession(sessionUser);
           setUser(userObj);
         }
         setScreen("app");
       } else if (isStripeReturn) {
-        // Paid but not logged in — send to login
         setScreen("auth");
         setAuthMode("login");
       }
-      // no session, no stripe return → stay on landing
     }
 
     initSession();
