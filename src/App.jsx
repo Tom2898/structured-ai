@@ -546,16 +546,23 @@ export default function App() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isStripeReturn = params.get("payment") === "success";
+    const urlPlan = params.get("plan") || "retail";
     if (isStripeReturn) window.history.replaceState({}, "", "/");
 
     supabase.auth.getSession().then(async ({ data }) => {
       const sessionUser = data?.session?.user;
       if (sessionUser) {
-        const userObj = await buildUserFromSession(sessionUser);
-        if (isStripeReturn && userObj.plan === "free") {
-          userObj.plan = params.get("plan") || "retail";
+        if (isStripeReturn) {
+          // Stripe redirects before webhook fires — trust the URL param immediately
+          // and persist to Auth metadata so refreshes keep the correct plan
+          await supabase.auth.updateUser({ data: { plan: urlPlan } });
+          const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
+          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+          setUser({ name, email: sessionUser.email, initials, plan: urlPlan });
+        } else {
+          const userObj = await buildUserFromSession(sessionUser);
+          setUser(userObj);
         }
-        setUser(userObj);
         setScreen("app");
       } else if (isStripeReturn) {
         setScreen("auth");
