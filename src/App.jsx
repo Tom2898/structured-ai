@@ -1025,7 +1025,11 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                   <strong>Piano Free ({proposalsUsed}/{FREE_LIMIT} proposte utilizzate)</strong>
                   <span>Passa a Retail (€19.90/mese) per ricerca ISIN attivi, o a Pro per confronto affiancato e molto altro.</span>
                 </div>
-                <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
+                <button className="upgrade-btn" onClick={() => {
+                  const retailPlan = PLANS.find(p => p.id === "retail");
+                  if (retailPlan?.priceId) handleStripeCheckout(retailPlan);
+                  else setShowUpgradeModal(true);
+                }}>Upgrade a Retail →</button>
               </div>
             )}
           </>
@@ -1149,9 +1153,15 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                     </div>
                   </div>
                 )}
-                {nextPlan && (
-                  <button className="profile-upgrade-btn" onClick={() => { setTab("dashboard"); }}>
-                    Passa a {nextPlan.name} — {nextPlan.priceMonthly}{nextPlan.period} →
+                {nextPlan && user.plan === "free" && (
+                  <button className="profile-upgrade-btn" onClick={() => {
+                    if (nextPlan.priceId) {
+                      handleStripeCheckout(nextPlan);
+                    } else {
+                      setTab("dashboard");
+                    }
+                  }}>
+                    Upgrade a {nextPlan.name} — {nextPlan.priceMonthly}{nextPlan.period} →
                   </button>
                 )}
               </div>
@@ -1186,6 +1196,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                             if (data.success) {
                               setCancelMsg("Abbonamento cancellato. Rimarrà attivo fino alla fine del periodo.");
                               setCancelConfirm(false);
+                              setUser(u => ({ ...u, plan: "free" }));
                             } else {
                               setCancelMsg("Errore: " + (data.error || "riprova."));
                             }

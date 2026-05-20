@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // Update Supabase
     await supabase
       .from('subscriptions')
-      .update({ status: 'cancelling', updated_at: new Date().toISOString() })
+      .update({ status: 'cancelling', plan: 'free', updated_at: new Date().toISOString() })
       .eq('email', email);
 
     return res.status(200).json({ success: true });
