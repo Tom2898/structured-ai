@@ -606,7 +606,7 @@ async function handleStripeCheckout(plan) {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: plan.priceId, email: authEmail || "" })
+      body: JSON.stringify({ priceId: plan.priceId, email: user?.email || authEmail || "" })
     });
     const data = await res.json();
     if (data.url) {
