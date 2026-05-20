@@ -548,36 +548,39 @@ export default function App() {
     const isStripeReturn = params.get("payment") === "success";
     const urlPlan = params.get("plan") || "retail";
 
-    console.log("[AUTH] URL params:", window.location.search);
-    console.log("[AUTH] isStripeReturn:", isStripeReturn, "urlPlan:", urlPlan);
-
     if (isStripeReturn) window.history.replaceState({}, "", "/");
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    async function initSession(retries = 3) {
+      const { data } = await supabase.auth.getSession();
       const sessionUser = data?.session?.user;
-      console.log("[AUTH] sessionUser:", sessionUser?.email || "none");
+
+      if (!sessionUser && retries > 0) {
+        // Session not ready yet — wait and retry
+        await new Promise(r => setTimeout(r, 800));
+        return initSession(retries - 1);
+      }
 
       if (sessionUser) {
         if (isStripeReturn) {
-          console.log("[AUTH] Stripe return — setting plan:", urlPlan);
+          // Trust URL param immediately — webhook may not have fired yet
           await supabase.auth.updateUser({ data: { plan: urlPlan } });
           const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
           const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-          const userObj = { name, email: sessionUser.email, initials, plan: urlPlan };
-          console.log("[AUTH] setUser:", userObj);
-          setUser(userObj);
+          setUser({ name, email: sessionUser.email, initials, plan: urlPlan });
         } else {
           const userObj = await buildUserFromSession(sessionUser);
-          console.log("[AUTH] Normal session restore, plan:", userObj.plan);
           setUser(userObj);
         }
         setScreen("app");
       } else if (isStripeReturn) {
-        console.log("[AUTH] Stripe return but no session — redirecting to login");
+        // Paid but not logged in — send to login
         setScreen("auth");
         setAuthMode("login");
       }
-    });
+      // no session, no stripe return → stay on landing
+    }
+
+    initSession();
   }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
