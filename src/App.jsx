@@ -488,35 +488,6 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
-
-  // Handle Stripe success redirect
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("payment") === "success") {
-      const plan = params.get("plan") || "retail";
-      window.history.replaceState({}, "", "/");
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (session?.user) {
-          const u = session.user;
-          const name = u.user_metadata?.name || u.email.split("@")[0];
-          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
-          setUser({ name, email: u.email, initials, plan });
-          setScreen("app");
-          subscription.unsubscribe();
-        }
-      });
-      // Also try immediately
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session?.user) {
-          const u = data.session.user;
-          const name = u.user_metadata?.name || u.email.split("@")[0];
-          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
-          setUser({ name, email: u.email, initials, plan });
-          setScreen("app");
-        }
-      });
-    }
-  }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
   const [catFilter, setCatFilter] = useState("All");
@@ -550,14 +521,10 @@ export default function App() {
     setObjective(val);
     setSelectedProductIds([]);
   }
-async function handleStripeCheckout(plan) { /* STRIPE_FIX_v2 */
-  if (!plan.priceId) {
-    setAuthError("Errore: priceId mancante.");
-    return false;
-  }
-  setAuthError("Reindirizzamento a Stripe...");
+async function handleStripeCheckout(plan) {
+  if (!plan.priceId) return false;
   try {
-    const res = await fetch("https://structured-ai-l4gg.vercel.app/api/checkout", {
+    const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ priceId: plan.priceId, email: authEmail || "" })
@@ -567,11 +534,11 @@ async function handleStripeCheckout(plan) { /* STRIPE_FIX_v2 */
       window.location.href = data.url;
       return true;
     } else {
-      setAuthError("Stripe error: " + (data.error || "nessuna URL ricevuta."));
+      setAuthError("Errore nel checkout Stripe. Riprova.");
       return false;
     }
   } catch (err) {
-    setAuthError("Errore connessione checkout: " + err.message);
+    setAuthError("Errore nella connessione al checkout: " + err.message);
     return false;
   }
 }
@@ -590,10 +557,16 @@ async function handleStripeCheckout(plan) { /* STRIPE_FIX_v2 */
       if (error) { setAuthError(error.message); return; }
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-      console.log('RETAIL CHECK REACHED', authPlan); if (authPlan === 'retail') {
+      if (authPlan === 'retail') {
         const retailPlan = PLANS.find(p => p.id === 'retail');
-        await handleStripeCheckout(retailPlan);
-        return;
+        if (retailPlan?.priceId) {
+          setAuthError("Reindirizzamento a Stripe in corso...");
+          const ok = await handleStripeCheckout(retailPlan);
+          if (!ok) {
+            // Stripe failed — error already shown by handleStripeCheckout
+          }
+          return;
+        }
       }
       setUser({ name, email: authEmail, initials, plan: authPlan });
       setScreen("app");
