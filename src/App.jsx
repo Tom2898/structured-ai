@@ -494,15 +494,25 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
       const plan = params.get("plan") || "retail";
-      supabase.auth.getUser().then(({ data }) => {
-        if (data?.user) {
-          const name = data.user.user_metadata?.name || data.user.email.split("@")[0];
-          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
-          setUser({ name, email: data.user.email, initials, plan });
-          setScreen("app");
-          window.history.replaceState({}, "", "/");
-        }
-      });
+      const tryLogin = (attempts) => {
+        supabase.auth.getSession().then(({ data }) => {
+          const user = data?.session?.user;
+          if (user) {
+            const name = user.user_metadata?.name || user.email.split("@")[0];
+            const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+            setUser({ name, email: user.email, initials, plan });
+            setScreen("app");
+            window.history.replaceState({}, "", "/");
+          } else if (attempts > 0) {
+            setTimeout(() => tryLogin(attempts - 1), 1000);
+          } else {
+            setScreen("auth");
+            setAuthMode("login");
+            window.history.replaceState({}, "", "/");
+          }
+        });
+      };
+      tryLogin(5);
     }
   }, []);
   const [authError, setAuthError] = useState("");
