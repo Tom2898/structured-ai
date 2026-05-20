@@ -547,28 +547,36 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const isStripeReturn = params.get("payment") === "success";
     const urlPlan = params.get("plan") || "retail";
+
+    console.log("[AUTH] URL params:", window.location.search);
+    console.log("[AUTH] isStripeReturn:", isStripeReturn, "urlPlan:", urlPlan);
+
     if (isStripeReturn) window.history.replaceState({}, "", "/");
 
     supabase.auth.getSession().then(async ({ data }) => {
       const sessionUser = data?.session?.user;
+      console.log("[AUTH] sessionUser:", sessionUser?.email || "none");
+
       if (sessionUser) {
         if (isStripeReturn) {
-          // Stripe redirects before webhook fires — trust the URL param immediately
-          // and persist to Auth metadata so refreshes keep the correct plan
+          console.log("[AUTH] Stripe return — setting plan:", urlPlan);
           await supabase.auth.updateUser({ data: { plan: urlPlan } });
           const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
           const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-          setUser({ name, email: sessionUser.email, initials, plan: urlPlan });
+          const userObj = { name, email: sessionUser.email, initials, plan: urlPlan };
+          console.log("[AUTH] setUser:", userObj);
+          setUser(userObj);
         } else {
           const userObj = await buildUserFromSession(sessionUser);
+          console.log("[AUTH] Normal session restore, plan:", userObj.plan);
           setUser(userObj);
         }
         setScreen("app");
       } else if (isStripeReturn) {
+        console.log("[AUTH] Stripe return but no session — redirecting to login");
         setScreen("auth");
         setAuthMode("login");
       }
-      // no session and no stripe return → stay on landing (default)
     });
   }, []);
   const [authError, setAuthError] = useState("");
