@@ -7,19 +7,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+export const config = { api: { bodyParser: false } };
+
+async function buffer(readable) {
+  const chunks = [];
+  for await (const chunk of readable) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const sig = req.headers['stripe-signature'];
-  let event;
+  const buf = await buffer(req);
 
+  let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
+    console.error('Webhook signature error:', err.message);
     return res.status(400).json({ error: err.message });
   }
 
@@ -29,7 +37,7 @@ export default async function handler(req, res) {
     const subscriptionId = session.subscription;
     const customerId = session.customer;
 
-    await supabase.from('subscriptions').upsert({
+    const { error } = await supabase.from('subscriptions').upsert({
       email,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
@@ -37,6 +45,8 @@ export default async function handler(req, res) {
       status: 'active',
       updated_at: new Date().toISOString()
     }, { onConflict: 'email' });
+
+    if (error) console.error('Supabase upsert error:', error.message);
   }
 
   if (event.type === 'customer.subscription.deleted') {
