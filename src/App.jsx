@@ -525,28 +525,44 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
 
-  // Handle Stripe success redirect
+  // Helper: build user object reading plan from subscriptions table (source of truth)
+  async function buildUserFromSession(sessionUser) {
+    const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
+    const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    let plan = "free";
+    try {
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("plan,status")
+        .eq("email", sessionUser.email)
+        .single();
+      if (subData?.status === "active" && subData?.plan) plan = subData.plan;
+      else if (subData?.status === "cancelling") plan = "free";
+    } catch (_) {}
+    return { name, email: sessionUser.email, initials, plan };
+  }
+
+  // Restore session on page load / refresh, and handle Stripe success redirect
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("payment") === "success") {
-      const plan = params.get("plan") || "retail";
-      window.history.replaceState({}, "", "/");
-      supabase.auth.getSession().then(async ({ data }) => {
-        const user = data?.session?.user;
-        if (user) {
-          const name = user.user_metadata?.name || user.email.split("@")[0];
-          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
-          let finalPlan = plan;
-          const { data: subData } = await supabase.from("subscriptions").select("plan,status").eq("email",user.email).single();
-          if (subData?.status === "active" && subData?.plan) finalPlan = subData.plan;
-          setUser({ name, email: user.email, initials, plan: finalPlan });
-          setScreen("app");
-        } else {
-          setScreen("auth");
-          setAuthMode("login");
+    const isStripeReturn = params.get("payment") === "success";
+    if (isStripeReturn) window.history.replaceState({}, "", "/");
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      const sessionUser = data?.session?.user;
+      if (sessionUser) {
+        const userObj = await buildUserFromSession(sessionUser);
+        if (isStripeReturn && userObj.plan === "free") {
+          userObj.plan = params.get("plan") || "retail";
         }
-      });
-    }
+        setUser(userObj);
+        setScreen("app");
+      } else if (isStripeReturn) {
+        setScreen("auth");
+        setAuthMode("login");
+      }
+      // no session and no stripe return → stay on landing (default)
+    });
   }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
@@ -639,10 +655,8 @@ async function handleStripeCheckout(plan) {
         password: authPassword,
       });
       if (error) { setAuthError(error.message); return; }
-      const name = data.user.user_metadata?.name || authEmail.split("@")[0];
-      const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-      const plan = data.user.user_metadata?.plan || "free";
-      setUser({ name, email: authEmail, initials, plan });
+      const userObj = await buildUserFromSession(data.user);
+      setUser(userObj);
       setScreen("app");
     }
   }
@@ -1196,6 +1210,8 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                             if (data.success) {
                               setCancelMsg("Abbonamento cancellato. Rimarrà attivo fino alla fine del periodo.");
                               setCancelConfirm(false);
+                              // Update Supabase Auth metadata so refresh reads correct plan
+                              await supabase.auth.updateUser({ data: { plan: "free" } });
                               setUser(u => ({ ...u, plan: "free" }));
                             } else {
                               setCancelMsg("Errore: " + (data.error || "riprova."));
