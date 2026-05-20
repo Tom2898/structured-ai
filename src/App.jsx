@@ -529,7 +529,7 @@ export default function App() {
   async function buildUserFromSession(sessionUser, { waitForActive = false } = {}) {
     const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
     const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-    let plan = sessionUser.user_metadata?.plan || "free";
+    let plan = "free";
     try {
       // If coming from Stripe, poll up to 8s for webhook to write active status
       const maxAttempts = waitForActive ? 8 : 1;
@@ -544,9 +544,28 @@ export default function App() {
           plan = subData.plan;
           break;
         }
-        if (subData?.status === "cancelling") { plan = "free"; break; }
+        if (subData?.status === "cancelling" || subData?.status === "cancelled") {
+          plan = "free";
+          break;
+        }
       }
-    } catch (_) {}
+      // Supabase had no record — fall back to auth metadata
+      if (plan === "free") {
+        const metaPlan = sessionUser.user_metadata?.plan;
+        if (metaPlan && metaPlan !== "free") {
+          // Double-check: only trust metadata if Supabase has no row at all
+          const { data: check } = await supabase
+            .from("subscriptions")
+            .select("status")
+            .eq("email", sessionUser.email)
+            .single();
+          if (!check) plan = metaPlan;
+        }
+      }
+    } catch (_) {
+      // No Supabase row at all — fall back to auth metadata
+      plan = sessionUser.user_metadata?.plan || "free";
+    }
     return { name, email: sessionUser.email, initials, plan };
   }
 
