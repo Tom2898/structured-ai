@@ -176,6 +176,42 @@ const css = `
   .plan-pill.retail { background: #e3f2fd; color: #1565c0; border-color: rgba(21,101,192,0.2); }
   .logout-btn { padding: 5px 12px; font-size: 11px; border: 1px solid var(--border-md); border-radius: var(--radius-sm); background: none; cursor: pointer; color: var(--muted); font-family: 'DM Mono', monospace; }
   .logout-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .profile-page { max-width: 600px; margin: 0 auto; padding: 2rem 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.75rem 2rem; }
+  .profile-card-title { font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 1.25rem; }
+  .profile-avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+  .profile-avatar-big { width: 56px; height: 56px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; letter-spacing: 0.04em; flex-shrink: 0; }
+  .profile-name { font-size: 18px; font-family: 'Fraunces', serif; font-weight: 400; }
+  .profile-email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .profile-field { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .profile-field:last-child { border-bottom: none; padding-bottom: 0; }
+  .profile-field-label { color: var(--muted); font-size: 11px; letter-spacing: 0.04em; }
+  .profile-field-value { font-size: 13px; }
+  .profile-plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; }
+  .profile-plan-badge.free { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(26,58,42,0.18); }
+  .profile-plan-badge.retail { background: #e3f2fd; color: #1565c0; border: 1px solid rgba(21,101,192,0.2); }
+  .profile-plan-badge.pro { background: var(--pro-light); color: var(--pro); border: 1px solid rgba(124,58,237,0.2); }
+  .profile-plan-badge.unlimited { background: var(--gold-light); color: var(--gold); border: 1px solid rgba(184,148,42,0.25); }
+  .profile-usage-bar { margin-top: 1rem; }
+  .profile-usage-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .profile-usage-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .profile-usage-fill { height: 100%; border-radius: 99px; transition: width 0.4s; background: var(--accent); }
+  .profile-usage-fill.warn { background: var(--gold); }
+  .profile-usage-fill.full { background: #c62828; }
+  .profile-upgrade-btn { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; margin-top: 1rem; transition: opacity 0.15s; }
+  .profile-upgrade-btn:hover { opacity: 0.85; }
+  .profile-danger-btn { width: 100%; padding: 10px; background: none; color: #c62828; border: 1px solid #c62828; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; }
+  .profile-danger-btn:hover { background: #fff5f5; }
+  .profile-cancel-btn { width: 100%; padding: 10px; background: none; color: #e65100; border: 1px solid #e65100; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; margin-bottom: 8px; }
+  .profile-cancel-btn:hover { background: #fff8f5; }
+  .profile-cancel-confirm { background: var(--surface); border: 1px solid #e65100; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 8px; }
+  .profile-cancel-confirm p { font-size: 12px; color: var(--muted); margin-bottom: 1rem; line-height: 1.6; }
+  .profile-cancel-confirm-btns { display: flex; gap: 8px; }
+  .profile-cancel-confirm-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; font-family: 'DM Mono', monospace; }
+  .profile-cancel-yes { background: #c62828; color: #fff; border: none; }
+  .profile-cancel-yes:hover { opacity: 0.85; }
+  .profile-cancel-no { background: none; border: 1px solid var(--border-md); color: var(--muted); }
+  .profile-cancel-no:hover { border-color: var(--accent); color: var(--accent); }
 
   /* MAIN */
   .main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
@@ -488,8 +524,35 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
+
+  // Handle Stripe success redirect
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      const plan = params.get("plan") || "retail";
+      window.history.replaceState({}, "", "/");
+      supabase.auth.getSession().then(async ({ data }) => {
+        const user = data?.session?.user;
+        if (user) {
+          const name = user.user_metadata?.name || user.email.split("@")[0];
+          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+          let finalPlan = plan;
+          const { data: subData } = await supabase.from("subscriptions").select("plan,status").eq("email",user.email).single();
+          if (subData?.status === "active" && subData?.plan) finalPlan = subData.plan;
+          setUser({ name, email: user.email, initials, plan: finalPlan });
+          setScreen("app");
+        } else {
+          setScreen("auth");
+          setAuthMode("login");
+        }
+      });
+    }
+  }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
   const [horizon, setHorizon] = useState("");
@@ -929,7 +992,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
           <div className="topnav-logo-name">StructuredAI</div>
         </div>
         <div style={{ width: 16 }} />
-        {[["generator","Genera"],["catalog","Prodotti"],["history","Storico"],["dashboard","Dashboard"]].map(([t, label]) => (
+        {[["generator","Genera"],["catalog","Prodotti"],["history","Storico"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
           <button key={t} className={`topnav-tab${tab === t ? " active" : ""}`} onClick={() => { setTab(t); setViewingHistory(null); }}>{label}</button>
         ))}
         <div className="topnav-spacer" />
@@ -1037,6 +1100,123 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
         )}
 
         {/* GENERATOR */}
+        {tab === "profile" && (() => {
+          const currentPlan = PLANS.find(p => p.id === user.plan) || PLANS[0];
+          const limit = currentPlan.proposalLimit === Infinity ? null : currentPlan.proposalLimit;
+          const used = proposalsUsed;
+          const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+          const fillClass = pct >= 100 ? "full" : pct >= 75 ? "warn" : "";
+          const nextPlan = PLANS.find(p => p.id === (user.plan === "free" ? "retail" : user.plan === "retail" ? "pro" : user.plan === "pro" ? "unlimited" : null));
+          return (
+            <div className="profile-page">
+              <div className="profile-card">
+                <div className="profile-card-title">Account</div>
+                <div className="profile-avatar-row">
+                  <div className="profile-avatar-big">{user.initials}</div>
+                  <div>
+                    <div className="profile-name">{user.name}</div>
+                    <div className="profile-email">{user.email}</div>
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <span className="profile-field-label">PIANO ATTIVO</span>
+                  <span className={`profile-plan-badge ${user.plan}`}>{user.plan.toUpperCase()}</span>
+                </div>
+                <div className="profile-field">
+                  <span className="profile-field-label">PREZZO</span>
+                  <span className="profile-field-value">{currentPlan.priceMonthly}{currentPlan.period}</span>
+                </div>
+                <div className="profile-field">
+                  <span className="profile-field-label">PROPOSTE INCLUSE</span>
+                  <span className="profile-field-value">{limit === null ? "Illimitate" : `${limit}/mese`}</span>
+                </div>
+              </div>
+
+              <div className="profile-card">
+                <div className="profile-card-title">Utilizzo questo mese</div>
+                <div className="profile-field" style={{borderBottom:"none",paddingBottom:0}}>
+                  <span className="profile-field-label">PROPOSTE GENERATE</span>
+                  <span className="profile-field-value">{used}{limit !== null ? ` / ${limit}` : ""}</span>
+                </div>
+                {limit !== null && (
+                  <div className="profile-usage-bar">
+                    <div className="profile-usage-label">
+                      <span>{pct}% utilizzato</span>
+                      <span>{limit - used > 0 ? `${limit - used} rimanenti` : "Limite raggiunto"}</span>
+                    </div>
+                    <div className="profile-usage-track">
+                      <div className={`profile-usage-fill ${fillClass}`} style={{width: `${pct}%`}} />
+                    </div>
+                  </div>
+                )}
+                {nextPlan && (
+                  <button className="profile-upgrade-btn" onClick={() => { setTab("dashboard"); }}>
+                    Passa a {nextPlan.name} — {nextPlan.priceMonthly}{nextPlan.period} →
+                  </button>
+                )}
+              </div>
+
+              <div className="profile-card">
+                <div className="profile-card-title">Funzionalità piano</div>
+                {currentPlan.features.map((f, i) => (
+                  <div key={i} className="profile-field">
+                    <span className="profile-field-value">✓ {f}</span>
+                  </div>
+                ))}
+              </div>
+
+              {user.plan === "retail" && (
+                <div className="profile-card">
+                  <div className="profile-card-title">Gestione abbonamento</div>
+                  {cancelMsg ? (
+                    <div style={{fontSize:"13px", color: cancelMsg.includes("errore") ? "#c62828" : "var(--accent)", padding:"8px 0"}}>{cancelMsg}</div>
+                  ) : cancelConfirm ? (
+                    <div className="profile-cancel-confirm">
+                      <p>Sei sicuro di voler cancellare l'abbonamento Retail? L'accesso rimarrà attivo fino alla fine del periodo pagato.</p>
+                      <div className="profile-cancel-confirm-btns">
+                        <button className="profile-cancel-yes" disabled={cancelLoading} onClick={async () => {
+                          setCancelLoading(true);
+                          try {
+                            const res = await fetch("https://structured-ai-l4gg.vercel.app/api/cancel-subscription", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email: user.email })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setCancelMsg("Abbonamento cancellato. Rimarrà attivo fino alla fine del periodo.");
+                              setCancelConfirm(false);
+                            } else {
+                              setCancelMsg("Errore: " + (data.error || "riprova."));
+                            }
+                          } catch(e) {
+                            setCancelMsg("Errore di connessione: " + e.message);
+                          }
+                          setCancelLoading(false);
+                        }}>
+                          {cancelLoading ? "..." : "Sì, cancella"}
+                        </button>
+                        <button className="profile-cancel-no" onClick={() => setCancelConfirm(false)}>Annulla</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="profile-cancel-btn" onClick={() => setCancelConfirm(true)}>
+                      Cancella abbonamento Retail
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="profile-card">
+                <div className="profile-card-title">Sessione</div>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
+                  Disconnetti account
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         {tab === "generator" && (
           <>
             <div className="page-title">Genera Proposta di Struttura</div>
