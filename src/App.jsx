@@ -488,6 +488,23 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
+
+  // Handle Stripe success redirect
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      const plan = params.get("plan") || "retail";
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user) {
+          const name = data.user.user_metadata?.name || data.user.email.split("@")[0];
+          const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+          setUser({ name, email: data.user.email, initials, plan });
+          setScreen("app");
+          window.history.replaceState({}, "", "/");
+        }
+      });
+    }
+  }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
   const [catFilter, setCatFilter] = useState("All");
