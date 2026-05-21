@@ -610,6 +610,8 @@ function ProductSelector({ objective, selectedIds, onChange }) {
 export default function App() {
   const [screen, setScreen] = useState("landing");
   const [authMode, setAuthMode] = useState("login");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
   const [user, setUser] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
   const [authName, setAuthName] = useState("");
@@ -665,6 +667,24 @@ export default function App() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isStripeReturn = params.get("payment") === "success";
+    const isPasswordReset = params.get("reset") === "true" || window.location.hash.includes("type=recovery");
+    if (isPasswordReset) {
+      window.history.replaceState({}, "", "/");
+      setAuthMode("login");
+      setScreen("auth");
+      setAuthError("");
+      // Show new password prompt
+      setTimeout(() => {
+        const newPwd = window.prompt("Inserisci la tua nuova password (minimo 6 caratteri):");
+        if (newPwd && newPwd.length >= 6) {
+          supabase.auth.updateUser({ password: newPwd }).then(({ error }) => {
+            if (error) alert("Errore: " + error.message);
+            else alert("Password aggiornata! Ora puoi accedere.");
+          });
+        }
+      }, 500);
+      return;
+    }
     const urlPlan = params.get("plan") || "retail";
 
     if (isStripeReturn) window.history.replaceState({}, "", "/");
