@@ -879,10 +879,10 @@ Reply ONLY with this JSON (no text outside):
 }`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "anthropic-beta": "claude-ai-artifact-api-2025-04-25" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, messages: [{ role: "user", content: prompt }] })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
@@ -952,10 +952,10 @@ Rispondi SEMPRE e SOLO con questo JSON (nessun testo fuori):
 Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "Media". Non restituire mai un array vuoto se hai trovato qualcosa di correlato.`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "anthropic-beta": "claude-ai-artifact-api-2025-04-25" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, tools: [{ type: "web_search_20250305", name: "web_search" }], messages: [{ role: "user", content: prompt }] })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, useWebSearch: true })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
