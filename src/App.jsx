@@ -676,8 +676,11 @@ export default function App() {
 
     // Listen for PASSWORD_RECOVERY event — Supabase fires this automatically
     // when it detects type=recovery in the URL hash after the user clicks the email link.
+    let isRecovery = window.location.hash.includes("type=recovery");
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
+        isRecovery = true;
         window.history.replaceState({}, "", "/");
         setResetMode(true);
         setResetSuccess(false);
@@ -688,6 +691,9 @@ export default function App() {
     });
 
     async function initSession() {
+      // If this is a password-recovery link, let onAuthStateChange handle it — don't enter the app
+      if (isRecovery) return;
+
       const { data } = await supabase.auth.getSession();
       const sessionUser = data?.session?.user;
 
@@ -850,6 +856,8 @@ async function handleStripeCheckout(plan) {
     if (resetNewPassword !== resetNewPassword2) { setAuthError("Le due password non coincidono."); return; }
     const { error } = await supabase.auth.updateUser({ password: resetNewPassword });
     if (error) { setAuthError(error.message); return; }
+    // Sign out the recovery session — user logs in fresh with the new password
+    await supabase.auth.signOut();
     setResetSuccess(true);
     setResetMode(false);
     setResetNewPassword("");
