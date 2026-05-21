@@ -833,6 +833,18 @@ async function handleStripeCheckout(plan) {
     }
   }
 
+  async function handleResetPassword() {
+    setAuthError("");
+    const email = authEmail.trim();
+    if (!email) { setAuthError("Inserisci prima la tua email per reimpostare la password."); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/?reset=true",
+    });
+    if (error) { setAuthError(error.message); return; }
+    setResetSent(true);
+    setResetEmail(email);
+  }
+
   function addUnderlying(raw) {
     const tokens = raw.split(/[\s,;]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
     setUnderlyings(prev => {
@@ -1236,8 +1248,22 @@ ${proposal.payoff ? `<div class="section">
             )}
             <button className="auth-btn" onClick={handleAuth}>{authMode === "login" ? "Accedi →" : "Crea account →"}</button>
             {authError && <p className="auth-error">{authError}</p>}
+            {authMode === "login" && !resetSent && (
+              <div style={{ textAlign: "center", marginTop: "0.6rem" }}>
+                <a style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", textDecoration: "underline", fontFamily: "'DM Mono', monospace" }}
+                  onClick={handleResetPassword}>
+                  Password dimenticata?
+                </a>
+              </div>
+            )}
+            {resetSent && (
+              <div style={{ marginTop: "0.75rem", padding: "10px 12px", background: "var(--accent-light)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--accent)", textAlign: "center", lineHeight: 1.5 }}>
+                ✓ Email inviata a <strong>{resetEmail}</strong>.<br />
+                Controlla la casella e segui il link per reimpostare la password.
+              </div>
+            )}
             <div className="auth-switch">
-              {authMode === "login" ? <>Nessun account? <a onClick={() => setAuthMode("signup")}>Registrati gratis</a></> : <>Hai già un account? <a onClick={() => setAuthMode("login")}>Accedi</a></>}
+              {authMode === "login" ? <>Nessun account? <a onClick={() => { setAuthMode("signup"); setResetSent(false); }}>Registrati gratis</a></> : <>Hai già un account? <a onClick={() => { setAuthMode("login"); setResetSent(false); }}>Accedi</a></>}
               {" · "}<a onClick={() => setScreen("landing")}>← Indietro</a>
             </div>
           </div>
