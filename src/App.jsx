@@ -839,6 +839,29 @@ ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
 
+MARKET CONTEXT (use this to estimate realistic coupons and terms):
+- Current environment: ECB rate ~3.5% (EUR), Fed rate ~4.5% (USD)
+- Use implied volatility estimates based on the underlying type:
+  * Single large-cap stock (e.g. AAPL, NVDA, MSFT): vol 25-45%
+  * European blue chip (e.g. ASML, SAP, LVMH): vol 20-35%
+  * Index (S&P500, EuroStoxx50, Nasdaq): vol 15-22%
+  * High-beta / small cap stock: vol 40-65%
+  * Commodity (Gold, Oil): vol 18-30%
+  * Basket of 2-3 stocks: vol 20-40% (worst-of adds ~5-10% to coupon)
+- Use these coupon benchmarks by product type and vol/risk:
+  * Barrier Reverse Convertible / Autocall (medium risk, ~30% vol): 7-12% p.a.
+  * Autocall with high barrier (low risk, index): 4-7% p.a.
+  * Worst-of Autocall (2-3 stocks, medium-high risk): 10-18% p.a.
+  * Capital Protected Note (low risk): 0-3% p.a. + participation
+  * Bonus Certificate (medium risk): 5-9% p.a. equivalent
+  * Express / Phoenix Autocall (medium risk): 6-11% p.a.
+  * Shark Note / Growth (no coupon): N/A — participation based
+  * Leverage / Turbo: N/A — leverage based
+- Adjust coupon UP for: higher vol, longer maturity, deeper barrier, worst-of, high-beta underlyings
+- Adjust coupon DOWN for: index underlyings, shorter maturity, capital protection, low vol
+- Always express coupon as % p.a. (e.g. "9.6% p.a.") or "N/A" for growth/leverage structures
+- Barrier should be realistic: 50-70% for high vol, 60-75% for medium vol, N/A for capital protected
+
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
@@ -993,6 +1016,78 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
   function handlePrintPDF() {
     if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
     setTimeout(() => window.print(), 100);
+  }
+
+  function exportSinglePDF(proposal) {
+    if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
+    const risk = RISK_COLOR[proposal.riskLevel] || RISK_COLOR["medium"];
+    const cat = CAT_COLOR[proposal.category] || CAT_COLOR["Income"];
+    const t = proposal.terms || {};
+    const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>${proposal.productName} - StructuredAI</title>
+<style>
+  body { font-family: monospace; padding: 2rem; color: #1a1a1a; max-width: 800px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a3a2a; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .logo { font-size: 20px; color: #1a3a2a; font-weight: bold; }
+  .meta { font-size: 11px; color: #888; text-align: right; }
+  .title { font-size: 18px; font-weight: bold; margin-bottom: 0.5rem; }
+  .badges { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; }
+  .section { margin-bottom: 1.5rem; }
+  .section-title { font-size: 10px; letter-spacing: 0.1em; color: #888; margin-bottom: 0.5rem; text-transform: uppercase; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .item { background: #f5f5f5; padding: 0.75rem; border-radius: 6px; }
+  .item-label { font-size: 10px; color: #888; margin-bottom: 2px; }
+  .item-value { font-size: 13px; }
+  .chip { display: inline-block; background: #1a3a2a; color: #fff; font-size: 11px; padding: 2px 10px; border-radius: 99px; margin: 2px; }
+  .payoff { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .payoff-item { padding: 8px; border-radius: 6px; font-size: 12px; }
+  .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 9px; color: #aaa; text-align: center; }
+  @media print { body { padding: 1rem; } }
+</style>
+</head><body>
+<div class="header">
+  <div class="logo">S StructuredAI</div>
+  <div class="meta">Generato il ${new Date().toLocaleDateString("it-IT")}<br>Solo a scopo informativo</div>
+</div>
+<div class="title">${proposal.productIcon || "◈"} ${proposal.productName}</div>
+<div class="badges">
+  <span class="badge" style="background:${cat.bg};color:${cat.text}">${proposal.category}</span>
+  <span class="badge" style="background:${risk.bg};color:${risk.text}">${risk.label} rischio</span>
+</div>
+${proposal.rationale ? `<div class="section"><div class="section-title">Motivazione</div><div style="font-size:12px;line-height:1.6">${proposal.rationale}</div></div>` : ""}
+<div class="section">
+  <div class="section-title">Sottostanti</div>
+  ${(proposal.underlying?.suggested || []).map(u => `<span class="chip">${u}</span>`).join("")}
+  ${proposal.underlying?.rationale ? `<div style="font-size:11px;color:#888;margin-top:6px;font-style:italic">${proposal.underlying.rationale}</div>` : ""}
+</div>
+<div class="section">
+  <div class="section-title">Caratteristiche struttura</div>
+  <div class="grid">
+    ${t.barrier ? `<div class="item"><div class="item-label">Barriera</div><div class="item-value">${t.barrier}</div></div>` : ""}
+    ${t.coupon ? `<div class="item"><div class="item-label">Cedola</div><div class="item-value">${t.coupon}</div></div>` : ""}
+    ${t.maturity ? `<div class="item"><div class="item-label">Scadenza</div><div class="item-value">${t.maturity}</div></div>` : ""}
+    ${t.autocall ? `<div class="item"><div class="item-label">Autocall</div><div class="item-value">${t.autocall}</div></div>` : ""}
+    ${t.capitalProtection ? `<div class="item"><div class="item-label">Protezione capitale</div><div class="item-value">${t.capitalProtection}</div></div>` : ""}
+    ${t.participation ? `<div class="item"><div class="item-label">Partecipazione</div><div class="item-value">${t.participation}</div></div>` : ""}
+  </div>
+</div>
+${proposal.payoff ? `<div class="section">
+  <div class="section-title">Scenari payoff</div>
+  <div class="payoff">
+    <div class="payoff-item" style="background:#e8f5e9"><div style="font-size:10px;color:#2e7d32;margin-bottom:4px">📈 RIALZO</div>${proposal.payoff.bull || ""}</div>
+    <div class="payoff-item" style="background:#f5f5f5"><div style="font-size:10px;color:#666;margin-bottom:4px">➡ LATERALE</div>${proposal.payoff.flat || ""}</div>
+    <div class="payoff-item" style="background:#fce4ec"><div style="font-size:10px;color:#c62828;margin-bottom:4px">📉 RIBASSO</div>${proposal.payoff.bear || ""}</div>
+  </div>
+</div>` : ""}
+<div class="footer">Documento generato da StructuredAI · Uso riservato · Solo a scopo informativo</div>
+</body></html>`;
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 300);
   }
 
   const filteredProducts = catFilter === "All" ? PRODUCTS : PRODUCTS.filter(p => p.category === catFilter);
@@ -1232,7 +1327,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                       onUpgrade={() => setShowUpgradeModal(true)}
                       compareSelected={compareSelected}
                       onToggleCompare={() => toggleCompare(p, `h_${viewingHistory.id}_${i}`)}
-                      onExportPDF={handlePrintPDF} />
+                      onExportPDF={() => exportSinglePDF(p)} />
                   ))}
                 </div>
               </>
@@ -1529,11 +1624,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                     <div style={{ fontSize:11, color:"var(--muted)", marginTop:8 }}>Le proposte utilizzeranno <strong>esclusivamente i sottostanti che selezioni</strong>.</div>
                   </div>
                 )}
-                {!loading && proposals.length > 0 && (isPro || isRetail) && (
-                  <div style={{ display:"flex", justifyContent:"flex-end" }}>
-                    <button className="action-btn" style={{ fontSize:11 }} onClick={handlePrintPDF}>↓ Esporta tutte in PDF</button>
-                  </div>
-                )}
+
                 {!loading && proposals.map((p, i) => (
                   p.error
                     ? <div key={i} style={{ padding:"1rem", background:"#fce4ec", borderRadius:"var(--radius)", fontSize:12, color:"#c62828" }}>{p.message}</div>
@@ -1546,7 +1637,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                         onUpgrade={() => setShowUpgradeModal(true)}
                         compareSelected={compareSelected}
                         onToggleCompare={() => toggleCompare(p, i)}
-                        onExportPDF={handlePrintPDF} />
+                        onExportPDF={() => exportSinglePDF(e)} />
                 ))}
               </div>
             </div>
