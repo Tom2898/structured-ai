@@ -1341,6 +1341,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
                               setCancelConfirm(false);
                               // Update Supabase Auth metadata so refresh reads correct plan
                               await supabase.auth.updateUser({ data: { plan: "free" } });
+                              await supabase.from("subscriptions").update({ plan: "free", status: "cancelling" }).eq("email", user.email);
                               setUser(u => ({ ...u, plan: "free" }));
                             } else {
                               setCancelMsg("Errore: " + (data.error || "riprova."));
