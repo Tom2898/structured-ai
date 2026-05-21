@@ -1,8 +1,50 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const PLAN_LIMITS = { free: 3, retail: 50, pro: 100, unlimited: Infinity };
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { prompt, useWebSearch } = req.body;
+  const { prompt, useWebSearch, email } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt mancante.' });
+
+  // Check and increment usage if email provided (not for ISIN search)
+  if (email && !useWebSearch) {
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('plan, usage_count, usage_reset_at')
+      .eq('email', email)
+      .single();
+
+    const plan = sub?.plan || 'free';
+    const limit = PLAN_LIMITS[plan] ?? 3;
+
+    if (limit !== Infinity) {
+      // Reset counter if new month
+      const resetAt = sub?.usage_reset_at ? new Date(sub.usage_reset_at) : new Date(0);
+      const now = new Date();
+      const isNewMonth = now.getFullYear() > resetAt.getFullYear() ||
+        now.getMonth() > resetAt.getMonth();
+
+      let usageCount = isNewMonth ? 0 : (sub?.usage_count || 0);
+
+      if (usageCount >= limit) {
+        return res.status(429).json({ error: 'Limite mensile raggiunto. Fai upgrade per continuare.' });
+      }
+
+      // Increment counter
+      await supabase.from('subscriptions').update({
+        usage_count: usageCount + 1,
+        usage_reset_at: isNewMonth ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString() : sub.usage_reset_at,
+        updated_at: now.toISOString()
+      }).eq('email', email);
+    }
+  }
 
   const body = {
     model: 'claude-sonnet-4-20250514',

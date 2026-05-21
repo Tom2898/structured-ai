@@ -43,7 +43,7 @@ const CAT_COLOR = {
 
 const PLANS = [
   { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
-  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 20, features: ["20 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
+  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 50, features: ["50 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
   { id: "pro", name: "Pro", priceMonthly: "€49", priceAnnual: "€39", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "Risparmia €120/anno" },
   { id: "unlimited", name: "Unlimited", priceMonthly: "€199", priceAnnual: "€159", period: "/mese", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "Risparmia €480/anno" },
 ];
@@ -726,9 +726,23 @@ export default function App() {
   const [showCompareModal, setShowCompareModal] = useState(false);
 
   const planInfo = PLANS.find(p => p.id === (user?.plan || "free"));
-  const proposalsUsed = history.length;
+  const [proposalsUsed, setProposalsUsed] = React.useState(0);
   const proposalLimit = planInfo?.proposalLimit ?? FREE_LIMIT;
   const atLimit = proposalLimit !== Infinity && proposalsUsed >= proposalLimit;
+
+  // Load usage count from Supabase on mount and after each generation
+  async function refreshUsage() {
+    if (!user?.email) return;
+    const { data } = await supabase.from("subscriptions").select("usage_count, usage_reset_at").eq("email", user.email).single();
+    if (data) {
+      const resetAt = data.usage_reset_at ? new Date(data.usage_reset_at) : new Date(0);
+      const now = new Date();
+      const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
+      setProposalsUsed(isNewMonth ? 0 : (data.usage_count || 0));
+    }
+  }
+
+  React.useEffect(() => { refreshUsage(); }, [user?.email]);
   const isPro = user?.plan === "pro" || user?.plan === "unlimited";
   const isRetail = user?.plan === "retail";
   const canSearchISIN = isPro || isRetail;
@@ -839,29 +853,6 @@ ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
 
-MARKET CONTEXT (use this to estimate realistic coupons and terms):
-- Current environment: ECB rate ~3.5% (EUR), Fed rate ~4.5% (USD)
-- Use implied volatility estimates based on the underlying type:
-  * Single large-cap stock (e.g. AAPL, NVDA, MSFT): vol 25-45%
-  * European blue chip (e.g. ASML, SAP, LVMH): vol 20-35%
-  * Index (S&P500, EuroStoxx50, Nasdaq): vol 15-22%
-  * High-beta / small cap stock: vol 40-65%
-  * Commodity (Gold, Oil): vol 18-30%
-  * Basket of 2-3 stocks: vol 20-40% (worst-of adds ~5-10% to coupon)
-- Use these coupon benchmarks by product type and vol/risk:
-  * Barrier Reverse Convertible / Autocall (medium risk, ~30% vol): 7-12% p.a.
-  * Autocall with high barrier (low risk, index): 4-7% p.a.
-  * Worst-of Autocall (2-3 stocks, medium-high risk): 10-18% p.a.
-  * Capital Protected Note (low risk): 0-3% p.a. + participation
-  * Bonus Certificate (medium risk): 5-9% p.a. equivalent
-  * Express / Phoenix Autocall (medium risk): 6-11% p.a.
-  * Shark Note / Growth (no coupon): N/A — participation based
-  * Leverage / Turbo: N/A — leverage based
-- Adjust coupon UP for: higher vol, longer maturity, deeper barrier, worst-of, high-beta underlyings
-- Adjust coupon DOWN for: index underlyings, shorter maturity, capital protection, low vol
-- Always express coupon as % p.a. (e.g. "9.6% p.a.") or "N/A" for growth/leverage structures
-- Barrier should be realistic: 50-70% for high vol, 60-75% for medium vol, N/A for capital protected
-
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
@@ -905,14 +896,20 @@ Reply ONLY with this JSON (no text outside):
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, email: user?.email })
       });
+      if (res.status === 429) {
+        setShowUpgradeModal(true);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
       const rawText = data.content?.map(b => b.text || "").join("") || "";
       const clean = rawText.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
       setProposals(parsed.proposals || []);
+      refreshUsage();
       setIsinResults({});
       setIsinUsedIndex(null);
       setHistory(h => [{
@@ -1496,7 +1493,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="paywall-banner">
                 <div className="paywall-banner-text">
                   <strong>Hai usato tutte le {proposalLimit} proposte del piano {planInfo?.name}</strong>
-                  <span>{user?.plan === "unlimited" ? "" : user?.plan === "pro" ? "Passa a Unlimited per proposte illimitate." : user?.plan === "retail" ? "Passa a Pro per 100 proposte/mese." : "Passa a Retail per 20 proposte/mese o a Pro per 100."}</span>
+                  <span>{user?.plan === "unlimited" ? "" : user?.plan === "pro" ? "Passa a Unlimited per proposte illimitate." : user?.plan === "retail" ? "Passa a Pro per 100 proposte/mese." : "Passa a Retail per 50 proposte/mese o a Pro per 100."}</span>
                 </div>
                 <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
               </div>
