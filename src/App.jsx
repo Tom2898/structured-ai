@@ -612,6 +612,10 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [resetSent, setResetSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetNewPassword2, setResetNewPassword2] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [user, setUser] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
   const [authName, setAuthName] = useState("");
@@ -667,27 +671,21 @@ export default function App() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isStripeReturn = params.get("payment") === "success";
-    const isPasswordReset = params.get("reset") === "true" || window.location.hash.includes("type=recovery");
-    if (isPasswordReset) {
-      window.history.replaceState({}, "", "/");
-      setAuthMode("login");
-      setScreen("auth");
-      setAuthError("");
-      // Show new password prompt
-      setTimeout(() => {
-        const newPwd = window.prompt("Inserisci la tua nuova password (minimo 6 caratteri):");
-        if (newPwd && newPwd.length >= 6) {
-          supabase.auth.updateUser({ password: newPwd }).then(({ error }) => {
-            if (error) alert("Errore: " + error.message);
-            else alert("Password aggiornata! Ora puoi accedere.");
-          });
-        }
-      }, 500);
-      return;
-    }
-    const urlPlan = params.get("plan") || "retail";
 
     if (isStripeReturn) window.history.replaceState({}, "", "/");
+
+    // Listen for PASSWORD_RECOVERY event — Supabase fires this automatically
+    // when it detects type=recovery in the URL hash after the user clicks the email link.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        window.history.replaceState({}, "", "/");
+        setResetMode(true);
+        setResetSuccess(false);
+        setResetNewPassword("");
+        setResetNewPassword2("");
+        setScreen("auth");
+      }
+    });
 
     async function initSession() {
       const { data } = await supabase.auth.getSession();
@@ -721,6 +719,7 @@ export default function App() {
     }
 
     initSession();
+    return () => subscription.unsubscribe();
   }, []);
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
@@ -838,11 +837,25 @@ async function handleStripeCheckout(plan) {
     const email = authEmail.trim();
     if (!email) { setAuthError("Inserisci prima la tua email per reimpostare la password."); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/?reset=true",
+      redirectTo: window.location.origin,
     });
     if (error) { setAuthError(error.message); return; }
     setResetSent(true);
     setResetEmail(email);
+  }
+
+  async function handleNewPassword() {
+    setAuthError("");
+    if (resetNewPassword.length < 6) { setAuthError("La password deve essere di almeno 6 caratteri."); return; }
+    if (resetNewPassword !== resetNewPassword2) { setAuthError("Le due password non coincidono."); return; }
+    const { error } = await supabase.auth.updateUser({ password: resetNewPassword });
+    if (error) { setAuthError(error.message); return; }
+    setResetSuccess(true);
+    setResetMode(false);
+    setResetNewPassword("");
+    setResetNewPassword2("");
+    setAuthMode("login");
+    setAuthError("");
   }
 
   function addUnderlying(raw) {
@@ -1221,51 +1234,90 @@ ${proposal.payoff ? `<div class="section">
         </div>
         <div className="auth-right">
           <div className="auth-card">
-            <div className="auth-tabs">
-              <button className={`auth-tab${authMode === "login" ? " active" : ""}`} onClick={() => setAuthMode("login")}>Accedi</button>
-              <button className={`auth-tab${authMode === "signup" ? " active" : ""}`} onClick={() => setAuthMode("signup")}>Registrati</button>
-            </div>
-            {authMode === "signup" && (
-              <div className="form-group">
-                <label>NOME</label>
-                <input placeholder="Mario Rossi" value={authName} onChange={e => setAuthName(e.target.value)} />
-              </div>
-            )}
-            <div className="form-group"><label>EMAIL</label><input type="email" placeholder="nome@banca.it" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
-            <div className="form-group"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></div>
-            {authMode === "signup" && (
-              <div className="plan-selector">
-                <label>PIANO</label>
-                <div className="plan-opts">
-                  {PLANS.map(p => (
-                    <button key={p.id} className={`plan-opt${authPlan === p.id ? " selected" : ""}`} onClick={() => setAuthPlan(p.id)}>
-                      <span className="plan-opt-name">{p.name}</span>
-                      <span className="plan-opt-price">{p.priceMonthly}/mese</span>
-                    </button>
-                  ))}
+
+            {/* ── NUOVA PASSWORD (dopo click su link email) ── */}
+            {resetMode ? (
+              <>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.07em", color: "var(--accent)", marginBottom: 6 }}>REIMPOSTA PASSWORD</div>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: "1.5rem", fontWeight: 300, color: "var(--text)" }}>Scegli una nuova password</div>
                 </div>
-              </div>
+                <div className="form-group">
+                  <label>NUOVA PASSWORD</label>
+                  <input type="password" placeholder="Minimo 6 caratteri" value={resetNewPassword} onChange={e => setResetNewPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleNewPassword()} />
+                </div>
+                <div className="form-group">
+                  <label>CONFERMA PASSWORD</label>
+                  <input type="password" placeholder="Ripeti la nuova password" value={resetNewPassword2} onChange={e => setResetNewPassword2(e.target.value)} onKeyDown={e => e.key === "Enter" && handleNewPassword()} />
+                </div>
+                <button className="auth-btn" onClick={handleNewPassword}>Aggiorna password →</button>
+                {authError && <p className="auth-error">{authError}</p>}
+                <div className="auth-switch">
+                  <a onClick={() => { setResetMode(false); setAuthMode("login"); setAuthError(""); }}>← Torna al login</a>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="auth-tabs">
+                  <button className={`auth-tab${authMode === "login" ? " active" : ""}`} onClick={() => { setAuthMode("login"); setResetSent(false); setAuthError(""); }}>Accedi</button>
+                  <button className={`auth-tab${authMode === "signup" ? " active" : ""}`} onClick={() => { setAuthMode("signup"); setResetSent(false); setAuthError(""); }}>Registrati</button>
+                </div>
+
+                {/* Messaggio successo dopo reset */}
+                {resetSuccess && (
+                  <div style={{ marginBottom: "1rem", padding: "10px 12px", background: "var(--accent-light)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--accent)", textAlign: "center", lineHeight: 1.5 }}>
+                    ✓ Password aggiornata con successo. Accedi con la nuova password.
+                  </div>
+                )}
+
+                {authMode === "signup" && (
+                  <div className="form-group">
+                    <label>NOME</label>
+                    <input placeholder="Mario Rossi" value={authName} onChange={e => setAuthName(e.target.value)} />
+                  </div>
+                )}
+                <div className="form-group"><label>EMAIL</label><input type="email" placeholder="nome@banca.it" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
+                <div className="form-group"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAuth()} /></div>
+
+                {authMode === "signup" && (
+                  <div className="plan-selector">
+                    <label>PIANO</label>
+                    <div className="plan-opts">
+                      {PLANS.map(p => (
+                        <button key={p.id} className={`plan-opt${authPlan === p.id ? " selected" : ""}`} onClick={() => setAuthPlan(p.id)}>
+                          <span className="plan-opt-name">{p.name}</span>
+                          <span className="plan-opt-price">{p.priceMonthly}/mese</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button className="auth-btn" onClick={handleAuth}>{authMode === "login" ? "Accedi →" : "Crea account →"}</button>
+                {authError && <p className="auth-error">{authError}</p>}
+
+                {/* Link password dimenticata — solo in login */}
+                {authMode === "login" && !resetSent && (
+                  <div style={{ textAlign: "center", marginTop: "0.6rem" }}>
+                    <a style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", textDecoration: "underline", fontFamily: "'DM Mono', monospace" }} onClick={handleResetPassword}>
+                      Password dimenticata?
+                    </a>
+                  </div>
+                )}
+                {resetSent && (
+                  <div style={{ marginTop: "0.75rem", padding: "10px 12px", background: "var(--accent-light)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--accent)", textAlign: "center", lineHeight: 1.5 }}>
+                    ✓ Email inviata a <strong>{resetEmail}</strong>.<br />
+                    Clicca il link nell'email per tornare qui e impostare la nuova password.
+                  </div>
+                )}
+
+                <div className="auth-switch">
+                  {authMode === "login" ? <>Nessun account? <a onClick={() => { setAuthMode("signup"); setResetSent(false); setResetSuccess(false); setAuthError(""); }}>Registrati gratis</a></> : <>Hai già un account? <a onClick={() => { setAuthMode("login"); setResetSent(false); setAuthError(""); }}>Accedi</a></>}
+                  {" · "}<a onClick={() => setScreen("landing")}>← Indietro</a>
+                </div>
+              </>
             )}
-            <button className="auth-btn" onClick={handleAuth}>{authMode === "login" ? "Accedi →" : "Crea account →"}</button>
-            {authError && <p className="auth-error">{authError}</p>}
-            {authMode === "login" && !resetSent && (
-              <div style={{ textAlign: "center", marginTop: "0.6rem" }}>
-                <a style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", textDecoration: "underline", fontFamily: "'DM Mono', monospace" }}
-                  onClick={handleResetPassword}>
-                  Password dimenticata?
-                </a>
-              </div>
-            )}
-            {resetSent && (
-              <div style={{ marginTop: "0.75rem", padding: "10px 12px", background: "var(--accent-light)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--accent)", textAlign: "center", lineHeight: 1.5 }}>
-                ✓ Email inviata a <strong>{resetEmail}</strong>.<br />
-                Controlla la casella e segui il link per reimpostare la password.
-              </div>
-            )}
-            <div className="auth-switch">
-              {authMode === "login" ? <>Nessun account? <a onClick={() => { setAuthMode("signup"); setResetSent(false); }}>Registrati gratis</a></> : <>Hai già un account? <a onClick={() => { setAuthMode("login"); setResetSent(false); }}>Accedi</a></>}
-              {" · "}<a onClick={() => setScreen("landing")}>← Indietro</a>
-            </div>
+
           </div>
         </div>
       </div>
