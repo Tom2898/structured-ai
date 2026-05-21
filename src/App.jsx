@@ -611,6 +611,7 @@ export default function App() {
   const [screen, setScreen] = useState("landing");
   const [authMode, setAuthMode] = useState("login");
   const [resetSent, setResetSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [user, setUser] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
@@ -1220,7 +1221,7 @@ ${proposal.payoff ? `<div class="section">
               </div>
             )}
             <div className="form-group"><label>EMAIL</label><input type="email" placeholder="nome@banca.it" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
-            <div className="form-group"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></div>
+            <div className="form-group"><label style={{ display:"flex", justifyContent:"space-between" }}>PASSWORD{authMode === "login" && <a style={{ fontWeight:400, letterSpacing:0, fontSize:10, cursor:"pointer" }} onClick={async () => { if (!authEmail) { setAuthError("Inserisci la tua email prima."); return; } const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin }); if (error) setAuthError(error.message); else setResetSent(true); }}>Password dimenticata?</a>}</label><input type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></div>{resetSent && <p style={{ fontSize:11, color:"var(--accent)", marginTop:-8, marginBottom:8 }}>✓ Email di recupero inviata!</p>}
             {authMode === "signup" && (
               <div className="plan-selector">
                 <label>PIANO</label>
