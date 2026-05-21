@@ -1,21 +1,21 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { supabase } from './lib/supabase';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PRODUCTS = [
-  { id: "autocall", name: "Autocall / Phoenix", risk: "medium", category: "Income", icon: "↩", desc: "Rimborso anticipato se il sottostante supera la barriera alle date di osservazione. Cedola periodica condizionale.", keyTerms: ["Cedola condizionale", "Barriera di rimborso", "Osservazione periodica", "Rimborso anticipato"] },
-  { id: "capital", name: "Capital Protected Note", risk: "low", category: "Protection", icon: "🛡", desc: "Protezione del 100% del capitale a scadenza con partecipazione al rialzo.", keyTerms: ["100% protezione capitale", "Partecipazione al rialzo", "Nessuna barriera", "Garanzia a scadenza"] },
-  { id: "reverse", name: "Reverse Convertible", risk: "medium-high", category: "Income", icon: "↔", desc: "Cedola fissa elevata, ma capitale a rischio se il sottostante scende sotto lo strike.", keyTerms: ["Cedola fissa alta", "Rischio capitale", "Strike a 100%", "Nessuna barriera"] },
-  { id: "barrier", name: "Barrier Reverse Conv.", risk: "medium", category: "Income", icon: "⬇", desc: "Come il reverse convertible ma con barriera — capitale protetto finché la barriera non viene violata.", keyTerms: ["Cedola fissa", "Barriera di protezione", "Strike a 100%", "Protezione condizionale"] },
-  { id: "bonus", name: "Bonus Certificate", risk: "medium", category: "Growth", icon: "★", desc: "Bonus a scadenza se la barriera non viene mai toccata. Partecipazione integrale sopra il livello bonus.", keyTerms: ["Bonus garantito", "Barriera americana", "Partecipazione 1:1", "Crescita con protezione"] },
-  { id: "express", name: "Express Certificate", risk: "medium", category: "Income", icon: "⚡", desc: "Uscita anticipata con rendimento fisso a ogni data di osservazione se il sottostante è sopra lo strike.", keyTerms: ["Uscita anticipata", "Rendimento fisso", "Osservazione annuale", "Step-up premio"] },
-  { id: "outperform", name: "Outperformance Cert.", risk: "medium-high", category: "Growth", icon: "📈", desc: "Partecipazione con leva al rialzo sopra lo strike, 1:1 al ribasso.", keyTerms: ["Leva al rialzo", "1:1 al ribasso", "Nessuna protezione", "Strike a 100%"] },
-  { id: "twinwin", name: "Twin Win", risk: "medium", category: "Growth", icon: "⚖", desc: "Guadagna sia dai movimenti al rialzo che al ribasso, a meno che la barriera non venga violata.", keyTerms: ["Doppia direzione", "Barriera americana", "Simmetria bull/bear", "Alta partecipazione"] },
-  { id: "worstof", name: "Worst-of Autocall", risk: "high", category: "Income", icon: "🎯", desc: "Cedola più alta tramite esposizione all'asset con la peggiore performance in un basket.", keyTerms: ["Cedola elevata", "Basket worst-of", "Rischio amplificato", "Barriera condizionale"] },
-  { id: "shark", name: "Shark Note", risk: "medium", category: "Growth", icon: "🦈", desc: "Partecipazione limitata da una barriera superiore — cedola più alta in cambio.", keyTerms: ["Partecipazione con cap", "Barriera superiore", "Cedola potenziata", "Crescita limitata"] },
-  { id: "airbag", name: "Airbag Certificate", risk: "medium-low", category: "Protection", icon: "🪂", desc: "Protezione parziale del capitale tramite meccanismo airbag che ammortizza le perdite.", keyTerms: ["Airbag sul ribasso", "Protezione parziale", "Partecipazione ridotta", "Ammortizzatore perdite"] },
-  { id: "digital", name: "Digital / Binary Note", risk: "medium-high", category: "Income", icon: "◈", desc: "Payoff fisso se il sottostante chiude sopra un livello target a scadenza.", keyTerms: ["Payoff binario", "Target a scadenza", "Cedola fissa condizionale", "Tutto o niente"] },
+  { id: "autocall", name: "Autocall / Phoenix", risk: "medium", category: "Income", icon: "â†©", desc: "Rimborso anticipato se il sottostante supera la barriera alle date di osservazione. Cedola periodica condizionale.", keyTerms: ["Cedola condizionale", "Barriera di rimborso", "Osservazione periodica", "Rimborso anticipato"] },
+  { id: "capital", name: "Capital Protected Note", risk: "low", category: "Protection", icon: "ðŸ›¡", desc: "Protezione del 100% del capitale a scadenza con partecipazione al rialzo.", keyTerms: ["100% protezione capitale", "Partecipazione al rialzo", "Nessuna barriera", "Garanzia a scadenza"] },
+  { id: "reverse", name: "Reverse Convertible", risk: "medium-high", category: "Income", icon: "â†”", desc: "Cedola fissa elevata, ma capitale a rischio se il sottostante scende sotto lo strike.", keyTerms: ["Cedola fissa alta", "Rischio capitale", "Strike a 100%", "Nessuna barriera"] },
+  { id: "barrier", name: "Barrier Reverse Conv.", risk: "medium", category: "Income", icon: "â¬‡", desc: "Come il reverse convertible ma con barriera â€” capitale protetto finchÃ© la barriera non viene violata.", keyTerms: ["Cedola fissa", "Barriera di protezione", "Strike a 100%", "Protezione condizionale"] },
+  { id: "bonus", name: "Bonus Certificate", risk: "medium", category: "Growth", icon: "â˜…", desc: "Bonus a scadenza se la barriera non viene mai toccata. Partecipazione integrale sopra il livello bonus.", keyTerms: ["Bonus garantito", "Barriera americana", "Partecipazione 1:1", "Crescita con protezione"] },
+  { id: "express", name: "Express Certificate", risk: "medium", category: "Income", icon: "âš¡", desc: "Uscita anticipata con rendimento fisso a ogni data di osservazione se il sottostante Ã¨ sopra lo strike.", keyTerms: ["Uscita anticipata", "Rendimento fisso", "Osservazione annuale", "Step-up premio"] },
+  { id: "outperform", name: "Outperformance Cert.", risk: "medium-high", category: "Growth", icon: "ðŸ“ˆ", desc: "Partecipazione con leva al rialzo sopra lo strike, 1:1 al ribasso.", keyTerms: ["Leva al rialzo", "1:1 al ribasso", "Nessuna protezione", "Strike a 100%"] },
+  { id: "twinwin", name: "Twin Win", risk: "medium", category: "Growth", icon: "âš–", desc: "Guadagna sia dai movimenti al rialzo che al ribasso, a meno che la barriera non venga violata.", keyTerms: ["Doppia direzione", "Barriera americana", "Simmetria bull/bear", "Alta partecipazione"] },
+  { id: "worstof", name: "Worst-of Autocall", risk: "high", category: "Income", icon: "ðŸŽ¯", desc: "Cedola piÃ¹ alta tramite esposizione all'asset con la peggiore performance in un basket.", keyTerms: ["Cedola elevata", "Basket worst-of", "Rischio amplificato", "Barriera condizionale"] },
+  { id: "shark", name: "Shark Note", risk: "medium", category: "Growth", icon: "ðŸ¦ˆ", desc: "Partecipazione limitata da una barriera superiore â€” cedola piÃ¹ alta in cambio.", keyTerms: ["Partecipazione con cap", "Barriera superiore", "Cedola potenziata", "Crescita limitata"] },
+  { id: "airbag", name: "Airbag Certificate", risk: "medium-low", category: "Protection", icon: "ðŸª‚", desc: "Protezione parziale del capitale tramite meccanismo airbag che ammortizza le perdite.", keyTerms: ["Airbag sul ribasso", "Protezione parziale", "Partecipazione ridotta", "Ammortizzatore perdite"] },
+  { id: "digital", name: "Digital / Binary Note", risk: "medium-high", category: "Income", icon: "â—ˆ", desc: "Payoff fisso se il sottostante chiude sopra un livello target a scadenza.", keyTerms: ["Payoff binario", "Target a scadenza", "Cedola fissa condizionale", "Tutto o niente"] },
 ];
 
 // Which products are suggested per objective
@@ -42,15 +42,15 @@ const CAT_COLOR = {
 };
 
 const PLANS = [
-  { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
-  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 50, features: ["50 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
-  { id: "pro", name: "Pro", priceMonthly: "€49", priceAnnual: "€39", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "Risparmia €120/anno" },
-  { id: "unlimited", name: "Unlimited", priceMonthly: "€199", priceAnnual: "€159", period: "/mese", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "Risparmia €480/anno" },
+  { id: "free", name: "Free", priceMonthly: "â‚¬0", priceAnnual: "â‚¬0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
+  { id: "retail", name: "Retail", priceMonthly: "â‚¬19.90", priceAnnual: "â‚¬19.90", period: "/mese", proposalLimit: 50, features: ["50 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "ðŸ” Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
+  { id: "pro", name: "Pro", priceMonthly: "â‚¬49", priceAnnual: "â‚¬39", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "ðŸ” Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "Risparmia â‚¬120/anno" },
+  { id: "unlimited", name: "Unlimited", priceMonthly: "â‚¬199", priceAnnual: "â‚¬159", period: "/mese", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "ðŸ” Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "Risparmia â‚¬480/anno" },
 ];
 
 const FREE_LIMIT = 3;
 
-// ─── CSS ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,7 +118,7 @@ const css = `
   .plan-divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
   .plan-features { list-style: none; margin-bottom: 1.5rem; }
   .plan-features li { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .plan-features li::before { content: "✓"; color: var(--accent); font-size: 11px; flex-shrink: 0; }
+  .plan-features li::before { content: "âœ“"; color: var(--accent); font-size: 11px; flex-shrink: 0; }
   .plan-cta { width: 100%; padding: 10px; border-radius: var(--radius-sm); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; }
   .plan-cta.outline { border: 1.5px solid var(--border-md); background: none; color: var(--text); }
   .plan-cta.outline:hover { border-color: var(--accent); color: var(--accent); }
@@ -392,7 +392,7 @@ const css = `
   .compare-section-label { background: var(--bg); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 14px; font-size: 9px; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; display: flex; align-items: center; }
   .compare-section-cell { background: var(--bg); border-bottom: 1px solid var(--border); padding: 6px 14px; }
 
-  /* ── MOBILE (≤ 640px) ───────────────────────────────────────────────────── */
+  /* â”€â”€ MOBILE (â‰¤ 640px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   @media (max-width: 640px) {
     /* LANDING */
     .landing-nav { padding: 0 1rem; }
@@ -471,7 +471,7 @@ const css = `
     .history-item { padding: 0.875rem 1rem; }
   }
 
-  /* TABLET (641–900px) */
+  /* TABLET (641â€“900px) */
   @media (min-width: 641px) and (max-width: 900px) {
     .plans-grid { grid-template-columns: repeat(2, 1fr); }
     .gen-layout { grid-template-columns: 300px 1fr; }
@@ -502,7 +502,7 @@ const css = `
   .pdf-watermark { display: none; font-size: 9px; color: var(--muted); text-align: center; margin-top: 2rem; letter-spacing: 0.05em; }
 `;
 
-// ─── ProductSelector Component ────────────────────────────────────────────────
+// â”€â”€â”€ ProductSelector Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProductSelector({ objective, selectedIds, onChange }) {
   const [open, setOpen] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
@@ -539,7 +539,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
           {selectedIds.length > 0 && (
             <span className="product-selector-count">{selectedIds.length} selezionate</span>
           )}
-          <span className={`product-selector-chevron${open ? " open" : ""}`}>▾</span>
+          <span className={`product-selector-chevron${open ? " open" : ""}`}>â–¾</span>
         </div>
       </div>
       {open && (
@@ -548,7 +548,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
             Le strutture evidenziate sono consigliate per l'obiettivo selezionato. Lascia tutto vuoto per lasciar scegliere all'AI.
           </p>
           <div className="product-selector-actions">
-            <button className="product-selector-action-btn" onClick={selectSuggested}>✓ Seleziona consigliate</button>
+            <button className="product-selector-action-btn" onClick={selectSuggested}>âœ“ Seleziona consigliate</button>
             {selectedIds.length > 0 && (
               <button className="product-selector-action-btn" onClick={clearAll}>Svuota</button>
             )}
@@ -567,7 +567,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
                 >
                   <div className="product-option-row" onClick={() => toggle(p.id)}>
                     <div className="product-option-checkbox">
-                      {isSelected && <span className="product-option-check">✓</span>}
+                      {isSelected && <span className="product-option-check">âœ“</span>}
                     </div>
                     <span className="product-option-icon">{p.icon}</span>
                     <div className="product-option-info">
@@ -575,7 +575,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
                       <div className="product-option-meta">
                         <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, background: cat.bg, color: cat.text }}>{p.category}</span>
                         <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, background: risk.bg, color: risk.text }}>{risk.label}</span>
-                        {isSuggested && <span className="product-option-suggested">✦ Consigliato</span>}
+                        {isSuggested && <span className="product-option-suggested">âœ¦ Consigliato</span>}
                       </div>
                     </div>
                     <button
@@ -583,7 +583,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
                       onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : p.id); }}
                       title="Dettagli"
                     >
-                      {isExpanded ? "▴" : "▾"}
+                      {isExpanded ? "â–´" : "â–¾"}
                     </button>
                   </div>
                   {isExpanded && (
@@ -606,7 +606,7 @@ function ProductSelector({ objective, selectedIds, onChange }) {
   );
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function App() {
   const [screen, setScreen] = useState("landing");
   const [authMode, setAuthMode] = useState("login");
@@ -644,7 +644,7 @@ export default function App() {
           break;
         }
       }
-      // Supabase had no record — fall back to auth metadata
+      // Supabase had no record â€” fall back to auth metadata
       if (plan === "free") {
         const metaPlan = sessionUser.user_metadata?.plan;
         if (metaPlan && metaPlan !== "free") {
@@ -658,7 +658,7 @@ export default function App() {
         }
       }
     } catch (_) {
-      // No Supabase row at all — fall back to auth metadata
+      // No Supabase row at all â€” fall back to auth metadata
       plan = sessionUser.user_metadata?.plan || "free";
     }
     return { name, email: sessionUser.email, initials, plan };
@@ -698,7 +698,7 @@ export default function App() {
         // Check if user still exists in Supabase Auth
         const { error: userError } = await supabase.auth.getUser();
         if (userError) {
-          // User deleted or session invalid — sign out and go to landing
+          // User deleted or session invalid â€” sign out and go to landing
           await supabase.auth.signOut();
           setScreen("landing");
           return;
@@ -815,7 +815,7 @@ async function handleStripeCheckout(plan) {
           setAuthError("Reindirizzamento a Stripe in corso...");
           const ok = await handleStripeCheckout(retailPlan);
           if (!ok) {
-            // Stripe failed — error already shown by handleStripeCheckout
+            // Stripe failed â€” error already shown by handleStripeCheckout
           }
           return;
         }
@@ -868,10 +868,10 @@ A client has the following profile:
 - Investment horizon: ${horizon}
 - Investment objective: ${objective}
 
-AVAILABLE UNDERLYINGS — the client has selected these and ONLY these:
+AVAILABLE UNDERLYINGS â€” the client has selected these and ONLY these:
 ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
 
-ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
+ALLOWED PRODUCT STRUCTURES â€” propose ONLY from this list:
 ${productListStr}
 
 CRITICAL RULES:
@@ -955,7 +955,7 @@ Reply ONLY with this JSON (no text outside):
     setIsinLoading(prev => ({ ...prev, [index]: true }));
     const underlying = proposal.underlying.suggested.join(", ");
     const activeFilter = canSearchISIN
-      ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati già scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
+      ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati giÃ  scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
       : "";
 
     // Build focused search queries for known reliable sources
@@ -990,7 +990,7 @@ Dopo la ricerca, estrai tutti i certificati trovati con ISIN reali. Accetta anch
 Rispondi SEMPRE e SOLO con questo JSON (nessun testo fuori):
 {"isins":[{"isin":"<codice ISIN reale>","emittente":"<nome emittente>","nome":"<nome prodotto>","scadenza":"<data scadenza>","similarity":"Alta|Media","fonte":"<URL pagina trovata>"}],"note":"<eventuale commento>"}
 
-Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "Media". Non restituire mai un array vuoto se hai trovato qualcosa di correlato.`;
+Se non trovi ISIN esatti, inserisci quelli piÃ¹ simili trovati con similarity "Media". Non restituire mai un array vuoto se hai trovato qualcosa di correlato.`;
 
     try {
       const res = await fetch("/api/generate", {
@@ -1070,7 +1070,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
   <div class="logo">S StructuredAI</div>
   <div class="meta">Generato il ${new Date().toLocaleDateString("it-IT")}<br>Solo a scopo informativo</div>
 </div>
-<div class="title">${proposal.productIcon || "◈"} ${proposal.productName}</div>
+<div class="title">${proposal.productIcon || "â—ˆ"} ${proposal.productName}</div>
 <div class="badges">
   <span class="badge" style="background:${cat.bg};color:${cat.text}">${proposal.category}</span>
   <span class="badge" style="background:${risk.bg};color:${risk.text}">${risk.label} rischio</span>
@@ -1095,12 +1095,12 @@ ${proposal.rationale ? `<div class="section"><div class="section-title">Motivazi
 ${proposal.payoff ? `<div class="section">
   <div class="section-title">Scenari payoff</div>
   <div class="payoff">
-    <div class="payoff-item" style="background:#e8f5e9"><div style="font-size:10px;color:#2e7d32;margin-bottom:4px">📈 RIALZO</div>${proposal.payoff.bull || ""}</div>
-    <div class="payoff-item" style="background:#f5f5f5"><div style="font-size:10px;color:#666;margin-bottom:4px">➡ LATERALE</div>${proposal.payoff.flat || ""}</div>
-    <div class="payoff-item" style="background:#fce4ec"><div style="font-size:10px;color:#c62828;margin-bottom:4px">📉 RIBASSO</div>${proposal.payoff.bear || ""}</div>
+    <div class="payoff-item" style="background:#e8f5e9"><div style="font-size:10px;color:#2e7d32;margin-bottom:4px">ðŸ“ˆ RIALZO</div>${proposal.payoff.bull || ""}</div>
+    <div class="payoff-item" style="background:#f5f5f5"><div style="font-size:10px;color:#666;margin-bottom:4px">âž¡ LATERALE</div>${proposal.payoff.flat || ""}</div>
+    <div class="payoff-item" style="background:#fce4ec"><div style="font-size:10px;color:#c62828;margin-bottom:4px">ðŸ“‰ RIBASSO</div>${proposal.payoff.bear || ""}</div>
   </div>
 </div>` : ""}
-<div class="footer">Documento generato da StructuredAI · Uso riservato · Solo a scopo informativo</div>
+<div class="footer">Documento generato da StructuredAI Â· Uso riservato Â· Solo a scopo informativo</div>
 </body></html>`;
     const win = window.open("", "_blank");
     win.document.write(html);
@@ -1110,7 +1110,7 @@ ${proposal.payoff ? `<div class="section">
 
   const filteredProducts = catFilter === "All" ? PRODUCTS : PRODUCTS.filter(p => p.category === catFilter);
 
-  // ── LANDING ──────────────────────────────────────────────────────────────
+  // â”€â”€ LANDING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (screen === "landing") return (
     <>
       <style>{css}</style>
@@ -1126,21 +1126,21 @@ ${proposal.payoff ? `<div class="section">
           </div>
         </nav>
         <div className="hero">
-          <div className="hero-eyebrow">AI · PRODOTTI STRUTTURATI</div>
+          <div className="hero-eyebrow">AI Â· PRODOTTI STRUTTURATI</div>
           <h1>Proponi la struttura giusta <em>in pochi secondi</em></h1>
           <p>Seleziona l'obiettivo del cliente, scegli le strutture adatte e lascia che l'AI generi proposte complete con scenari di payoff e codici ISIN Euronext reali.</p>
           <div className="hero-actions">
-            <button className="btn-hero" onClick={() => { setAuthMode("signup"); setScreen("auth"); }}>Inizia gratis →</button>
+            <button className="btn-hero" onClick={() => { setAuthMode("signup"); setScreen("auth"); }}>Inizia gratis â†’</button>
             <button className="btn-hero-outline" onClick={() => { setAuthMode("login"); setScreen("auth"); }}>Accedi</button>
           </div>
-          <div className="hero-note">Nessuna carta di credito richiesta · Piano Free: 3 proposte/mese</div>
+          <div className="hero-note">Nessuna carta di credito richiesta Â· Piano Free: 3 proposte/mese</div>
         </div>
         <div className="features-strip">
           {[
-            { icon: "🧠", title: "Basato sull'AI", sub: "Abbina il prodotto giusto al profilo" },
-            { icon: "📊", title: "Term sheet completi", sub: "Barriera, cedola, payoff, sottostante" },
-            { icon: "🗂", title: "Selezione guidata", sub: "Strutture filtrate per obiettivo" },
-            { icon: "🔍", title: "ISIN Euronext (Pro)", sub: "Certificati reali con ISIN" },
+            { icon: "ðŸ§ ", title: "Basato sull'AI", sub: "Abbina il prodotto giusto al profilo" },
+            { icon: "ðŸ“Š", title: "Term sheet completi", sub: "Barriera, cedola, payoff, sottostante" },
+            { icon: "ðŸ—‚", title: "Selezione guidata", sub: "Strutture filtrate per obiettivo" },
+            { icon: "ðŸ”", title: "ISIN Euronext (Pro)", sub: "Certificati reali con ISIN" },
           ].map(f => (
             <div className="feature-item" key={f.title}>
               <div className="feature-icon">{f.icon}</div>
@@ -1157,7 +1157,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="billing-toggle-thumb" />
             </button>
             <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-            {billingAnnual && <span className="billing-save-badge">Risparmia fino a €480/anno</span>}
+            {billingAnnual && <span className="billing-save-badge">Risparmia fino a â‚¬480/anno</span>}
           </div>
           <div className="plans-grid">
 {PLANS.map(plan => {
@@ -1170,7 +1170,7 @@ ${proposal.payoff ? `<div class="section">
       {plan.highlight && !comingSoon && <div className="plan-badge">BEST VALUE</div>}
       <div className="plan-name">{plan.name.toUpperCase()}</div>
       <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>
-      {billingAnnual && plan.annualNote && <div className="plan-annual-note">✓ {plan.annualNote}</div>}
+      {billingAnnual && plan.annualNote && <div className="plan-annual-note">âœ“ {plan.annualNote}</div>}
       <div className="plan-divider" />
       <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
       <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
@@ -1187,12 +1187,12 @@ ${proposal.payoff ? `<div class="section">
   );
 })}          </div>
         </div>
-        <div className="landing-footer">© 2025 StructuredAI · Solo a scopo informativo · Non costituisce consulenza finanziaria</div>
+        <div className="landing-footer">Â© 2025 StructuredAI Â· Solo a scopo informativo Â· Non costituisce consulenza finanziaria</div>
       </div>
     </>
   );
 
-  // ── AUTH ──────────────────────────────────────────────────────────────────
+  // â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (screen === "auth") return (
     <>
       <style>{css}</style>
@@ -1200,13 +1200,13 @@ ${proposal.payoff ? `<div class="section">
         <div className="auth-left">
           <div className="auth-left-logo">
             <div className="auth-left-logo-mark">S</div>
-            <div><div className="auth-left-logo-name">StructuredAI</div><div className="auth-left-tagline">AI · PRODOTTI STRUTTURATI</div></div>
+            <div><div className="auth-left-logo-name">StructuredAI</div><div className="auth-left-tagline">AI Â· PRODOTTI STRUTTURATI</div></div>
           </div>
           <div className="auth-left-middle">
             <h1>Strutture su misura,<br />in pochi secondi.</h1>
-            <p>Dalla profilatura del cliente alla proposta completa. Term sheet, payoff, ISIN reali — tutto in un click.</p>
+            <p>Dalla profilatura del cliente alla proposta completa. Term sheet, payoff, ISIN reali â€” tutto in un click.</p>
           </div>
-          <div className="auth-left-bottom">© 2025 StructuredAI · Solo a scopo informativo</div>
+          <div className="auth-left-bottom">Â© 2025 StructuredAI Â· Solo a scopo informativo</div>
         </div>
         <div className="auth-right">
           <div className="auth-card">
@@ -1221,7 +1221,7 @@ ${proposal.payoff ? `<div class="section">
               </div>
             )}
             <div className="form-group"><label>EMAIL</label><input type="email" placeholder="nome@banca.it" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
-            <div className="form-group"><label style={{ display:"flex", justifyContent:"space-between" }}>PASSWORD{authMode === "login" && <a style={{ fontWeight:400, letterSpacing:0, fontSize:10, cursor:"pointer" }} onClick={async () => { if (!authEmail) { setAuthError("Inserisci la tua email prima."); return; } const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin }); if (error) setAuthError(error.message); else setResetSent(true); }}>Password dimenticata?</a>}</label><input type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></div>{resetSent && <p style={{ fontSize:11, color:"var(--accent)", marginTop:-8, marginBottom:8 }}>✓ Email di recupero inviata!</p>}
+            <div className="form-group"><label style={{ display:"flex", justifyContent:"space-between" }}>PASSWORD{authMode === "login" && <a style={{ fontWeight:400, letterSpacing:0, fontSize:10, cursor:"pointer" }} onClick={async () => { if (!authEmail) { setAuthError("Inserisci la tua email prima."); return; } const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin }); if (error) setAuthError(error.message); else setResetSent(true); }}>Password dimenticata?</a>}</label><input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></div>{resetSent && <p style={{ fontSize:11, color:"var(--accent)", marginTop:-8, marginBottom:8 }}>âœ“ Email di recupero inviata!</p>}
             {authMode === "signup" && (
               <div className="plan-selector">
                 <label>PIANO</label>
@@ -1235,11 +1235,11 @@ ${proposal.payoff ? `<div class="section">
                 </div>
               </div>
             )}
-            <button className="auth-btn" onClick={handleAuth}>{authMode === "login" ? "Accedi →" : "Crea account →"}</button>
+            <button className="auth-btn" onClick={handleAuth}>{authMode === "login" ? "Accedi â†’" : "Crea account â†’"}</button>
             {authError && <p className="auth-error">{authError}</p>}
             <div className="auth-switch">
-              {authMode === "login" ? <>Nessun account? <a onClick={() => setAuthMode("signup")}>Registrati gratis</a></> : <>Hai già un account? <a onClick={() => setAuthMode("login")}>Accedi</a></>}
-              {" · "}<a onClick={() => setScreen("landing")}>← Indietro</a>
+              {authMode === "login" ? <>Nessun account? <a onClick={() => setAuthMode("signup")}>Registrati gratis</a></> : <>Hai giÃ  un account? <a onClick={() => setAuthMode("login")}>Accedi</a></>}
+              {" Â· "}<a onClick={() => setScreen("landing")}>â† Indietro</a>
             </div>
           </div>
         </div>
@@ -1247,7 +1247,7 @@ ${proposal.payoff ? `<div class="section">
     </>
   );
 
-  // ── APP ──────────────────────────────────────────────────────────────────
+  // â”€â”€ APP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <>
       <style>{css}</style>
@@ -1277,24 +1277,24 @@ ${proposal.payoff ? `<div class="section">
         {tab === "dashboard" && (
           <>
             <div className="page-title">Dashboard</div>
-            <div className="page-sub">{user.name} · {planInfo.name} plan</div>
+            <div className="page-sub">{user.name} Â· {planInfo.name} plan</div>
             <div className="stats-row">
               <div className="stat-card"><div className="stat-label">PROPOSTE GENERATE</div><div className="stat-value">{history.length}</div><div className="stat-sub">questa sessione</div></div>
               <div className="stat-card"><div className="stat-label">PRODOTTI IN CATALOGO</div><div className="stat-value">12</div><div className="stat-sub">tutte le categorie</div></div>
-              <div className="stat-card"><div className="stat-label">RICERCA ISIN</div><div className="stat-value" style={{ fontSize:"1rem", paddingTop:6 }}>{canSearchISIN ? "✓ Attiva" : "Pro/Retail"}</div><div className="stat-sub">{canSearchISIN ? (isRetail ? "Solo prodotti attivi" : "Euronext disponibile") : "upgrade per abilitare"}</div></div>
+              <div className="stat-card"><div className="stat-label">RICERCA ISIN</div><div className="stat-value" style={{ fontSize:"1rem", paddingTop:6 }}>{canSearchISIN ? "âœ“ Attiva" : "Pro/Retail"}</div><div className="stat-sub">{canSearchISIN ? (isRetail ? "Solo prodotti attivi" : "Euronext disponibile") : "upgrade per abilitare"}</div></div>
               <div className="stat-card"><div className="stat-label">PIANO ATTUALE</div><div className="stat-value" style={{ fontSize:"1.1rem", paddingTop:4 }}>{planInfo.name}</div><div className="stat-sub">{proposalLimit === Infinity ? "Proposte illimitate" : `${proposalsUsed} / ${proposalLimit} utilizzate`}</div></div>
             </div>
             {user.plan === "free" && (
               <div className="paywall-banner">
                 <div className="paywall-banner-text">
                   <strong>Piano Free ({proposalsUsed}/{FREE_LIMIT} proposte utilizzate)</strong>
-                  <span>Passa a Retail (€19.90/mese) per ricerca ISIN attivi, o a Pro per confronto affiancato e molto altro.</span>
+                  <span>Passa a Retail (â‚¬19.90/mese) per ricerca ISIN attivi, o a Pro per confronto affiancato e molto altro.</span>
                 </div>
                 <button className="upgrade-btn" onClick={() => {
                   const retailPlan = PLANS.find(p => p.id === "retail");
                   if (retailPlan?.priceId) handleStripeCheckout(retailPlan);
                   else setShowUpgradeModal(true);
-                }}>Upgrade a Retail →</button>
+                }}>Upgrade a Retail â†’</button>
               </div>
             )}
           </>
@@ -1333,8 +1333,8 @@ ${proposal.payoff ? `<div class="section">
             <div className="page-sub">Tutte le proposte generate in questa sessione</div>
             {viewingHistory ? (
               <>
-                <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>← Torna alla lista</button>
-                <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} · {viewingHistory.risk} · {viewingHistory.horizon}</div>
+                <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>â† Torna alla lista</button>
+                <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} Â· {viewingHistory.risk} Â· {viewingHistory.horizon}</div>
                 <div className="output-area">
                   {viewingHistory.proposals.map((p, i) => (
                     <ProposalCard key={i} proposal={p} index={i} isPro={isPro} canSearchISIN={canSearchISIN} isRetail={isRetail}
@@ -1350,17 +1350,17 @@ ${proposal.payoff ? `<div class="section">
                 </div>
               </>
             ) : history.length === 0 ? (
-              <div className="empty-state">Nessuna proposta ancora. Generane una →</div>
+              <div className="empty-state">Nessuna proposta ancora. Generane una â†’</div>
             ) : (
               <div className="history-list">
                 {history.map(item => (
                   <div key={item.id} className="history-item" onClick={() => setViewingHistory(item)}>
-                    <div className="history-icon">📋</div>
+                    <div className="history-icon">ðŸ“‹</div>
                     <div className="history-info">
-                      <div className="history-name">{item.objective} · {item.risk}</div>
-                      <div className="history-meta">{item.horizon} · {item.proposals.length} strutture · {item.date}</div>
+                      <div className="history-name">{item.objective} Â· {item.risk}</div>
+                      <div className="history-meta">{item.horizon} Â· {item.proposals.length} strutture Â· {item.date}</div>
                     </div>
-                    <div className="history-chevron">→</div>
+                    <div className="history-chevron">â†’</div>
                   </div>
                 ))}
               </div>
@@ -1426,16 +1426,16 @@ ${proposal.payoff ? `<div class="section">
                       setTab("dashboard");
                     }
                   }}>
-                    Upgrade a {nextPlan.name} — {nextPlan.priceMonthly}{nextPlan.period} →
+                    Upgrade a {nextPlan.name} â€” {nextPlan.priceMonthly}{nextPlan.period} â†’
                   </button>
                 )}
               </div>
 
               <div className="profile-card">
-                <div className="profile-card-title">Funzionalità piano</div>
+                <div className="profile-card-title">FunzionalitÃ  piano</div>
                 {currentPlan.features.map((f, i) => (
                   <div key={i} className="profile-field">
-                    <span className="profile-field-value">✓ {f}</span>
+                    <span className="profile-field-value">âœ“ {f}</span>
                   </div>
                 ))}
               </div>
@@ -1447,7 +1447,7 @@ ${proposal.payoff ? `<div class="section">
                     <div style={{fontSize:"13px", color: cancelMsg.includes("errore") ? "#c62828" : "var(--accent)", padding:"8px 0"}}>{cancelMsg}</div>
                   ) : cancelConfirm ? (
                     <div className="profile-cancel-confirm">
-                      <p>Sei sicuro di voler cancellare l'abbonamento Retail? L'accesso rimarrà attivo fino alla fine del periodo pagato.</p>
+                      <p>Sei sicuro di voler cancellare l'abbonamento Retail? L'accesso rimarrÃ  attivo fino alla fine del periodo pagato.</p>
                       <div className="profile-cancel-confirm-btns">
                         <button className="profile-cancel-yes" disabled={cancelLoading} onClick={async () => {
                           setCancelLoading(true);
@@ -1459,7 +1459,7 @@ ${proposal.payoff ? `<div class="section">
                             });
                             const data = await res.json();
                             if (data.success) {
-                              setCancelMsg("Abbonamento cancellato. Rimarrà attivo fino alla fine del periodo.");
+                              setCancelMsg("Abbonamento cancellato. RimarrÃ  attivo fino alla fine del periodo.");
                               setCancelConfirm(false);
                               // Update Supabase Auth metadata so refresh reads correct plan
                               await supabase.auth.updateUser({ data: { plan: "free" } });
@@ -1473,7 +1473,7 @@ ${proposal.payoff ? `<div class="section">
                           }
                           setCancelLoading(false);
                         }}>
-                          {cancelLoading ? "..." : "Sì, cancella"}
+                          {cancelLoading ? "..." : "SÃ¬, cancella"}
                         </button>
                         <button className="profile-cancel-no" onClick={() => setCancelConfirm(false)}>Annulla</button>
                       </div>
@@ -1516,7 +1516,7 @@ ${proposal.payoff ? `<div class="section">
                   <strong>Hai usato tutte le {proposalLimit} proposte del piano {planInfo?.name}</strong>
                   <span>{user?.plan === "unlimited" ? "" : user?.plan === "pro" ? "Passa a Unlimited per proposte illimitate." : user?.plan === "retail" ? "Passa a Pro per 100 proposte/mese." : "Passa a Retail per 50 proposte/mese o a Pro per 100."}</span>
                 </div>
-                <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
+                <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade â†’</button>
               </div>
             )}
 
@@ -1560,7 +1560,7 @@ ${proposal.payoff ? `<div class="section">
                   </select>
                 </div>
 
-                {/* Product selector — appears after objective chosen */}
+                {/* Product selector â€” appears after objective chosen */}
                 {objective && (
                   <ProductSelector
                     objective={objective}
@@ -1582,7 +1582,7 @@ ${proposal.payoff ? `<div class="section">
                     <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:8 }}>
                       {underlyings.map(u => (
                         <span key={u} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, padding:"3px 10px", borderRadius:99, background:"var(--accent)", color:"#fff", cursor:"pointer", fontFamily:"'DM Mono', monospace", letterSpacing:"0.03em" }} onClick={() => removeUnderlying(u)}>
-                          {u} <span style={{ opacity:0.6, fontSize:10 }}>×</span>
+                          {u} <span style={{ opacity:0.6, fontSize:10 }}>Ã—</span>
                         </span>
                       ))}
                     </div>
@@ -1596,7 +1596,7 @@ ${proposal.payoff ? `<div class="section">
                       + Aggiungi
                     </button>
                   </div>
-                  <div style={{ fontSize:10, color:"var(--muted)", marginTop:5 }}>Ticker o nome. Premi Invio o virgola per aggiungere più sottostanti.</div>
+                  <div style={{ fontSize:10, color:"var(--muted)", marginTop:5 }}>Ticker o nome. Premi Invio o virgola per aggiungere piÃ¹ sottostanti.</div>
                   {underlyings.length === 0 && <div style={{ fontSize:10, color:"#c62828", marginTop:4 }}>Aggiungi almeno un sottostante per procedere</div>}
                 </div>
 
@@ -1611,9 +1611,9 @@ ${proposal.payoff ? `<div class="section">
 
                 {!canSearchISIN && (
                   <div style={{ marginTop:"1rem", padding:"10px 12px", background:"var(--pro-light)", borderRadius:"var(--radius-sm)", border:"1px solid rgba(124,58,237,0.15)" }}>
-                    <div style={{ fontSize:10, color:"var(--pro)", letterSpacing:"0.06em", marginBottom:3 }}>RETAIL / PRO · RICERCA ISIN EURONEXT</div>
+                    <div style={{ fontSize:10, color:"var(--pro)", letterSpacing:"0.06em", marginBottom:3 }}>RETAIL / PRO Â· RICERCA ISIN EURONEXT</div>
                     <div style={{ fontSize:11, color:"#5b21b6" }}>Cerca certificati reali quotati su Euronext con caratteristiche simili.</div>
-                    <button style={{ marginTop:8, fontSize:11, padding:"5px 12px", border:"1px solid var(--pro)", borderRadius:"var(--radius-sm)", background:"none", color:"var(--pro)", cursor:"pointer", fontFamily:"'DM Mono', monospace" }} onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
+                    <button style={{ marginTop:8, fontSize:11, padding:"5px 12px", border:"1px solid var(--pro)", borderRadius:"var(--radius-sm)", background:"none", color:"var(--pro)", cursor:"pointer", fontFamily:"'DM Mono', monospace" }} onClick={() => setShowUpgradeModal(true)}>Upgrade â†’</button>
                   </div>
                 )}
               </div>
@@ -1627,9 +1627,9 @@ ${proposal.payoff ? `<div class="section">
                 )}
                 {loading && (
                   <div className="output-placeholder">
-                    <div style={{ fontSize:24, marginBottom:12 }}>🧠</div>
+                    <div style={{ fontSize:24, marginBottom:12 }}>ðŸ§ </div>
                     <div style={{ marginBottom:6 }}>L'AI sta analizzando il profilo...</div>
-                    <div style={{ fontSize:11, color:"var(--muted)", marginBottom:8 }}>Strutture adatte al rischio {riskAppetite} · {horizon}</div>
+                    <div style={{ fontSize:11, color:"var(--muted)", marginBottom:8 }}>Strutture adatte al rischio {riskAppetite} Â· {horizon}</div>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:4, justifyContent:"center" }}>
                       {underlyings.map(u => <span key={u} style={{ fontSize:10, padding:"2px 8px", borderRadius:99, background:"var(--accent-light)", color:"var(--accent)", border:"1px solid rgba(26,58,42,0.18)" }}>{u}</span>)}
                     </div>
@@ -1637,7 +1637,7 @@ ${proposal.payoff ? `<div class="section">
                 )}
                 {!loading && proposals.length === 0 && underlyings.length === 0 && (
                   <div className="output-placeholder">
-                    <div style={{ fontSize:24, marginBottom:12 }}>📊</div>
+                    <div style={{ fontSize:24, marginBottom:12 }}>ðŸ“Š</div>
                     <div>Compila il profilo a sinistra e clicca "Genera 3 strutture"</div>
                     <div style={{ fontSize:11, color:"var(--muted)", marginTop:8 }}>Le proposte utilizzeranno <strong>esclusivamente i sottostanti che selezioni</strong>.</div>
                   </div>
@@ -1672,7 +1672,7 @@ ${proposal.payoff ? `<div class="section">
               {compareSelected.map(x => (
                 <div key={x.key} className="compare-bar-chip">
                   {x.proposal.productIcon} {x.proposal.productName}
-                  <span className="compare-bar-chip-x" onClick={() => setCompareSelected(prev => prev.filter(p => p.key !== x.key))}>✕</span>
+                  <span className="compare-bar-chip-x" onClick={() => setCompareSelected(prev => prev.filter(p => p.key !== x.key))}>âœ•</span>
                 </div>
               ))}
             </div>
@@ -1680,7 +1680,7 @@ ${proposal.payoff ? `<div class="section">
           <div style={{ display:"flex", gap:8 }}>
             <button className="compare-clear-btn" onClick={() => setCompareSelected([])}>Svuota</button>
             <button className="compare-btn" disabled={compareSelected.length < 2} onClick={() => setShowCompareModal(true)}>
-              {compareSelected.length < 2 ? `Seleziona ancora ${2 - compareSelected.length}` : "Confronta →"}
+              {compareSelected.length < 2 ? `Seleziona ancora ${2 - compareSelected.length}` : "Confronta â†’"}
             </button>
           </div>
         </div>
@@ -1692,27 +1692,27 @@ ${proposal.payoff ? `<div class="section">
           <div className="compare-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ paddingBottom:"1rem", borderBottom:"1px solid var(--border)" }}>
               <div><h2>Confronto Affiancato</h2><p>{compareSelected.length} strutture selezionate</p></div>
-              <button className="modal-close" onClick={() => setShowCompareModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowCompareModal(false)}>âœ•</button>
             </div>
             <div style={{ padding:"1.5rem 2rem 2rem", overflowX:"auto" }}>
               {(() => {
                 const cols = compareSelected.length;
                 const gridCols = `200px ${Array(cols).fill("1fr").join(" ")}`;
                 const rows = [
-                  { section:"PROFILO", label:"Prodotto", key: p => `${p.productIcon || "◈"} ${p.productName}` },
+                  { section:"PROFILO", label:"Prodotto", key: p => `${p.productIcon || "â—ˆ"} ${p.productName}` },
                   { label:"Categoria", key: p => p.category },
                   { label:"Livello Rischio", key: p => RISK_COLOR[p.riskLevel]?.label || p.riskLevel },
                   { label:"Sottostante", key: p => (p.underlying?.suggested || []).join(", ") },
-                  { section:"TERMINI", label:"Scadenza", key: p => p.terms?.maturity || "—" },
-                  { label:"Strike", key: p => p.terms?.strike || "—" },
-                  { label:"Barriera", key: p => p.terms?.barrier || "—", className: p => p.terms?.barrier && p.terms.barrier !== "N/A" ? "warning" : "na" },
-                  { label:"Cedola", key: p => p.terms?.coupon || "—", className: p => p.terms?.coupon && p.terms.coupon !== "N/A" ? "positive" : "na" },
-                  { label:"Partecipazione", key: p => p.terms?.participation || "—", className: p => p.terms?.participation && p.terms.participation !== "N/A" ? "positive" : "na" },
-                  { label:"Protezione cap.", key: p => p.terms?.protection || "—", className: p => p.terms?.protection && p.terms.protection !== "N/A" ? "positive" : "na" },
-                  { label:"Osservazione", key: p => p.terms?.observationFrequency || "—" },
-                  { section:"PAYOFF", label:"🟢 Scenario Bull", key: p => p.payoff?.bull || "—", className: () => "positive" },
-                  { label:"🟡 Scenario Flat", key: p => p.payoff?.flat || "—" },
-                  { label:"🔴 Scenario Bear", key: p => p.payoff?.bear || "—", className: () => "warning" },
+                  { section:"TERMINI", label:"Scadenza", key: p => p.terms?.maturity || "â€”" },
+                  { label:"Strike", key: p => p.terms?.strike || "â€”" },
+                  { label:"Barriera", key: p => p.terms?.barrier || "â€”", className: p => p.terms?.barrier && p.terms.barrier !== "N/A" ? "warning" : "na" },
+                  { label:"Cedola", key: p => p.terms?.coupon || "â€”", className: p => p.terms?.coupon && p.terms.coupon !== "N/A" ? "positive" : "na" },
+                  { label:"Partecipazione", key: p => p.terms?.participation || "â€”", className: p => p.terms?.participation && p.terms.participation !== "N/A" ? "positive" : "na" },
+                  { label:"Protezione cap.", key: p => p.terms?.protection || "â€”", className: p => p.terms?.protection && p.terms.protection !== "N/A" ? "positive" : "na" },
+                  { label:"Osservazione", key: p => p.terms?.observationFrequency || "â€”" },
+                  { section:"PAYOFF", label:"ðŸŸ¢ Scenario Bull", key: p => p.payoff?.bull || "â€”", className: () => "positive" },
+                  { label:"ðŸŸ¡ Scenario Flat", key: p => p.payoff?.flat || "â€”" },
+                  { label:"ðŸ”´ Scenario Bear", key: p => p.payoff?.bear || "â€”", className: () => "warning" },
                 ];
                 return (
                   <div style={{ display:"grid", gridTemplateColumns: gridCols, minWidth:560 }}>
@@ -1735,8 +1735,8 @@ ${proposal.payoff ? `<div class="section">
                         <div className="compare-row-label">{row.label}</div>
                         {compareSelected.map(x => {
                           const val = row.key(x.proposal);
-                          const cls = row.className ? row.className(x.proposal) : (val === "—" || val === "N/A" ? "na" : "");
-                          return <div key={x.key} className={`compare-cell ${cls}`}>{val === "N/A" ? "—" : val}</div>;
+                          const cls = row.className ? row.className(x.proposal) : (val === "â€”" || val === "N/A" ? "na" : "");
+                          return <div key={x.key} className={`compare-cell ${cls}`}>{val === "N/A" ? "â€”" : val}</div>;
                         })}
                       </React.Fragment>
                     ))}
@@ -1754,7 +1754,7 @@ ${proposal.payoff ? `<div class="section">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div><h2>Upgrade del piano</h2><p>Sblocca proposte illimitate e ricerca ISIN reali su Euronext</p></div>
-              <button className="modal-close" onClick={() => setShowUpgradeModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowUpgradeModal(false)}>âœ•</button>
             </div>
             <div className="modal-body">
               <div className="billing-toggle" style={{ marginBottom:"1.5rem" }}>
@@ -1763,7 +1763,7 @@ ${proposal.payoff ? `<div class="section">
                   <div className="billing-toggle-thumb" />
                 </button>
                 <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-                {billingAnnual && <span className="billing-save-badge">Risparmia fino a €480/anno</span>}
+                {billingAnnual && <span className="billing-save-badge">Risparmia fino a â‚¬480/anno</span>}
               </div>
               <div className="modal-plans">
                 {PLANS.map(plan => {
@@ -1777,7 +1777,7 @@ ${proposal.payoff ? `<div class="section">
                         <span className="plan-price" style={{ fontSize:"1.6rem" }}>{price}</span>
                         <span className="plan-period">{plan.period}</span>
                       </div>
-                      {billingAnnual && plan.annualNote && <div className="plan-annual-note" style={{ marginBottom:"0.6rem" }}>✓ {plan.annualNote}</div>}
+                      {billingAnnual && plan.annualNote && <div className="plan-annual-note" style={{ marginBottom:"0.6rem" }}>âœ“ {plan.annualNote}</div>}
                       <ul className="plan-features" style={{ marginBottom:"1rem" }}>
                         {plan.features.map(f => <li key={f}>{f}</li>)}
                       </ul>
@@ -1802,16 +1802,16 @@ ${proposal.payoff ? `<div class="section">
         </div>
         <div className="pdf-print-header-meta">
           <div style={{ fontWeight:500 }}>Proposta strutturata riservata al cliente</div>
-          <div>Generata il {new Date().toLocaleDateString("it-IT")} · {user?.name}</div>
-          {riskAppetite && <div>Rischio: {riskAppetite} · Orizzonte: {horizon}</div>}
+          <div>Generata il {new Date().toLocaleDateString("it-IT")} Â· {user?.name}</div>
+          {riskAppetite && <div>Rischio: {riskAppetite} Â· Orizzonte: {horizon}</div>}
         </div>
       </div>
-      <div className="pdf-watermark">Documento generato da StructuredAI · Uso riservato · Solo a scopo informativo</div>
+      <div className="pdf-watermark">Documento generato da StructuredAI Â· Uso riservato Â· Solo a scopo informativo</div>
     </>
   );
 }
 
-// ─── ProposalCard ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ ProposalCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnderlyings, onSearchISIN, isinLoading, isinResults, isinLocked, onUpgrade, compareSelected, onToggleCompare, onExportPDF }) {
   const risk = RISK_COLOR[proposal.riskLevel] || RISK_COLOR["medium"];
   const cat = CAT_COLOR[proposal.category] || CAT_COLOR["Income"];
@@ -1827,7 +1827,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
       <div className="proposal-header">
         <div className="proposal-header-left">
           <div className="proposal-rank">#{proposal.rank || index + 1}</div>
-          <div className="proposal-product-name">{proposal.productIcon || "◈"} {proposal.productName}</div>
+          <div className="proposal-product-name">{proposal.productIcon || "â—ˆ"} {proposal.productName}</div>
           <span className="product-cat-badge" style={{ background:cat.bg, color:cat.text, fontSize:10, padding:"2px 8px", borderRadius:99 }}>{proposal.category}</span>
           <span className="product-risk-badge" style={{ background:risk.bg, color:risk.text, fontSize:10, padding:"2px 8px", borderRadius:4 }}>{risk.label} rischio</span>
         </div>
@@ -1835,18 +1835,18 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
           {isPro && onToggleCompare && (
             <button className={`compare-toggle-btn${isSelected ? " selected" : ""}`} style={{ opacity: compareDisabled ? 0.4 : 1, cursor: compareDisabled ? "not-allowed" : "pointer" }}
               onClick={onToggleCompare} title={compareDisabled ? "Massimo 3 strutture" : isSelected ? "Rimuovi dal confronto" : "Aggiungi al confronto"}>
-              {isSelected ? "✓ Nel confronto" : "⊞ Confronta"}
+              {isSelected ? "âœ“ Nel confronto" : "âŠž Confronta"}
             </button>
           )}
           {isPro && onExportPDF && (
-            <button className="action-btn" onClick={onExportPDF} style={{ fontSize:11 }}>↓ PDF</button>
+            <button className="action-btn" onClick={onExportPDF} style={{ fontSize:11 }}>â†“ PDF</button>
           )}
           {!isPro && onToggleCompare && (
-            <button className="compare-toggle-btn" onClick={onUpgrade}>⊞ Confronta <span style={{ fontSize:9, opacity:0.7 }}>PRO</span></button>
+            <button className="compare-toggle-btn" onClick={onUpgrade}>âŠž Confronta <span style={{ fontSize:9, opacity:0.7 }}>PRO</span></button>
           )}
           {canSearchISIN && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
-              {isinLoading ? "⏳ Ricerca..." : "🔍 Cerca ISIN Euronext"}
+              {isinLoading ? "â³ Ricerca..." : "ðŸ” Cerca ISIN Euronext"}
             </button>
           )}
         </div>
@@ -1858,11 +1858,11 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
           <div className="underlying-chips">
             {suggestedList.map((u, i) => {
               const isValid = !userUnderlyings || userUnderlyings.some(uu => uu.toLowerCase() === u.toLowerCase());
-              return <span key={i} className="underlying-chip" style={isValid ? {} : { background:"#fce4ec", color:"#c62828", border:"1px solid rgba(198,40,40,0.2)" }}>{u}{!isValid && " ⚠"}</span>;
+              return <span key={i} className="underlying-chip" style={isValid ? {} : { background:"#fce4ec", color:"#c62828", border:"1px solid rgba(198,40,40,0.2)" }}>{u}{!isValid && " âš "}</span>;
             })}
             {proposal.underlying?.type && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, background:"#e3f2fd", color:"#1565c0" }}>{proposal.underlying.type}</span>}
           </div>
-          {unauthorizedUnderlyings.length > 0 && <div style={{ fontSize:10, color:"#c62828", marginTop:4 }}>⚠ Sottostante non tra quelli selezionati</div>}
+          {unauthorizedUnderlyings.length > 0 && <div style={{ fontSize:10, color:"#c62828", marginTop:4 }}>âš  Sottostante non tra quelli selezionati</div>}
           {proposal.underlying?.rationale && <div style={{ fontSize:11, color:"var(--muted)", marginTop:4, fontStyle:"italic" }}>{proposal.underlying.rationale}</div>}
         </div>
 
@@ -1890,35 +1890,35 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
           <div className="payoff-summary">
             <div className="payoff-title">SCENARI DI PAYOFF INDICATIVI</div>
             <div className="payoff-scenarios">
-              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO BULL 🟢</div><div className="payoff-scenario-value bull" style={{ fontSize:"0.85rem" }}>{proposal.payoff.bull}</div></div>
-              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO FLAT 🟡</div><div className="payoff-scenario-value flat" style={{ fontSize:"0.85rem" }}>{proposal.payoff.flat}</div></div>
-              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO BEAR 🔴</div><div className="payoff-scenario-value bear" style={{ fontSize:"0.85rem" }}>{proposal.payoff.bear}</div></div>
+              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO BULL ðŸŸ¢</div><div className="payoff-scenario-value bull" style={{ fontSize:"0.85rem" }}>{proposal.payoff.bull}</div></div>
+              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO FLAT ðŸŸ¡</div><div className="payoff-scenario-value flat" style={{ fontSize:"0.85rem" }}>{proposal.payoff.flat}</div></div>
+              <div className="payoff-scenario"><div className="payoff-scenario-label">SCENARIO BEAR ðŸ”´</div><div className="payoff-scenario-value bear" style={{ fontSize:"0.85rem" }}>{proposal.payoff.bear}</div></div>
             </div>
           </div>
         )}
 
-        {proposal.rationale && <div className="rationale">💡 {proposal.rationale}</div>}
+        {proposal.rationale && <div className="rationale">ðŸ’¡ {proposal.rationale}</div>}
 
         <div className="isin-section">
           <div className="isin-section-header">
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:12 }}>🔍</span>
+              <span style={{ fontSize:12 }}>ðŸ”</span>
               <span style={{ fontSize:11, color:"var(--muted)" }}>Certificati simili su Euronext</span>
               <span className="isin-badge">{isRetail ? "RETAIL" : "PRO"}</span>
             </div>
-            {!canSearchISIN && <button className="isin-search-btn" onClick={onUpgrade} style={{ fontSize:10, borderColor:"var(--pro)", color:"var(--pro)" }}>Sblocca con Retail/Pro →</button>}
+            {!canSearchISIN && <button className="isin-search-btn" onClick={onUpgrade} style={{ fontSize:10, borderColor:"var(--pro)", color:"var(--pro)" }}>Sblocca con Retail/Pro â†’</button>}
             {canSearchISIN && !isinResults && !isinLoading && !isinLocked && (
-              <button className="isin-search-btn" onClick={onSearchISIN}>Cerca ISIN Euronext →</button>
+              <button className="isin-search-btn" onClick={onSearchISIN}>Cerca ISIN Euronext â†’</button>
             )}
           </div>
           {!canSearchISIN && <div style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>Upgrade a Retail o Pro per cercare ISIN di certificati quotati su Euronext simili a questa struttura.</div>}
           {canSearchISIN && isinLocked && (
             <div style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic", display:"flex", alignItems:"center", gap:6 }}>
-              <span>🔒</span> Ricerca ISIN già utilizzata su un'altra struttura di questa proposta.
+              <span>ðŸ”’</span> Ricerca ISIN giÃ  utilizzata su un'altra struttura di questa proposta.
             </div>
           )}
           {canSearchISIN && !isinResults && !isinLoading && !isinLocked && <div style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>Clicca "Cerca ISIN Euronext" per trovare certificati reali con caratteristiche simili.</div>}
-          {isinLoading && <div className="isin-loading">⏳ Ricerca certificati su Euronext in corso...</div>}
+          {isinLoading && <div className="isin-loading">â³ Ricerca certificati su Euronext in corso...</div>}
           {isinResults && !isinLoading && (
             <div className="isin-results">
               {isinResults.error
@@ -1929,8 +1929,8 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
                     {(isinResults.isins || []).map((isin, i) => (
                       <div key={i} className="isin-row">
                         <span className="isin-code">{isin.isin}</span>
-                        <span className="isin-name">{isin.emittente} · {isin.nome} · sc. {isin.scadenza}</span>
-                        {isin.fonte && <span style={{ fontSize:10, color:"var(--muted)", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={isin.fonte}>🔗 {isin.fonte.replace(/^https?:\/\/(www\.)?/,"").split("/")[0]}</span>}
+                        <span className="isin-name">{isin.emittente} Â· {isin.nome} Â· sc. {isin.scadenza}</span>
+                        {isin.fonte && <span style={{ fontSize:10, color:"var(--muted)", maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={isin.fonte}>ðŸ”— {isin.fonte.replace(/^https?:\/\/(www\.)?/,"").split("/")[0]}</span>}
                         <span className="isin-similarity">{isin.similarity === "Alta" || isin.similarity === "High" ? "Alta" : "Media"}</span>
                       </div>
                     ))}
@@ -1938,7 +1938,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
                   </>
               }
               <div style={{ fontSize:10, color:"var(--muted)", marginTop:6, fontStyle:"italic", borderTop:"1px solid var(--border)", paddingTop:6 }}>
-                ⚠️ Verificare sempre su <strong>Euronext Markets</strong> o <strong>Borsa Italiana</strong> prima di operare. Dati indicativi.
+                âš ï¸ Verificare sempre su <strong>Euronext Markets</strong> o <strong>Borsa Italiana</strong> prima di operare. Dati indicativi.
               </div>
             </div>
           )}
