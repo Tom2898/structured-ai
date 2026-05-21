@@ -674,6 +674,15 @@ export default function App() {
       const sessionUser = data?.session?.user;
 
       if (sessionUser) {
+        // Check if user still exists in Supabase Auth
+        const { error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          // User deleted or session invalid — sign out and go to landing
+          await supabase.auth.signOut();
+          setScreen("landing");
+          return;
+        }
+
         if (isStripeReturn) {
           // Poll Supabase until webhook writes active status (up to 8s)
           const userObj = await buildUserFromSession(sessionUser, { waitForActive: true });
