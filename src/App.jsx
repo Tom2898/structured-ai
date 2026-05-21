@@ -611,7 +611,6 @@ export default function App() {
   const [screen, setScreen] = useState("landing");
   const [authMode, setAuthMode] = useState("login");
   const [resetSent, setResetSent] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [user, setUser] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
