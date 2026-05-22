@@ -4,6 +4,13 @@
       "memory": 512
     }
   },
+  "env": {
+    "ANTHROPIC_API_KEY": "@anthropic_api_key",
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

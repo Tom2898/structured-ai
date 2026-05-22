@@ -1696,7 +1696,7 @@ ${proposal.payoff ? `<div class="section">
 
                 {!canSearchISIN && (
                   <div style={{ marginTop:"1rem", padding:"10px 12px", background:"var(--pro-light)", borderRadius:"var(--radius-sm)", border:"1px solid rgba(124,58,237,0.15)" }}>
-                    <div style={{ fontSize:10, color:"var(--pro)", letterSpacing:"0.06em", marginBottom:3 }}>RETAIL / PRO · RICERCA ISIN EURONEXT</div>
+                    <div style={{ fontSize:10, color:"var(--pro)", letterSpacing:"0.06em", marginBottom:3 }}>RETAIL · RICERCA ISIN EURONEXT</div>
                     <div style={{ fontSize:11, color:"#5b21b6" }}>Cerca certificati reali quotati su Euronext con caratteristiche simili.</div>
                     <button style={{ marginTop:8, fontSize:11, padding:"5px 12px", border:"1px solid var(--pro)", borderRadius:"var(--radius-sm)", background:"none", color:"var(--pro)", cursor:"pointer", fontFamily:"'DM Mono', monospace" }} onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
                   </div>
