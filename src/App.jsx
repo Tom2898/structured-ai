@@ -735,6 +735,9 @@ export default function App() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelMsg, setCancelMsg] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
   const [disclaimerVisible, setDisclaimerVisible] = useState(true);
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
@@ -1599,6 +1602,64 @@ ${proposal.payoff ? `<div class="section">
                 <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
+              </div>
+
+              <div className="profile-card" style={{ borderColor: "#fca5a5" }}>
+                <div className="profile-card-title" style={{ color: "#c62828" }}>Zona pericolosa</div>
+                {deleteMsg ? (
+                  <div style={{ fontSize: 13, color: deleteMsg.includes("errore") || deleteMsg.includes("Errore") ? "#c62828" : "var(--accent)", padding: "8px 0", lineHeight: 1.5 }}>{deleteMsg}</div>
+                ) : deleteConfirm ? (
+                  <div className="profile-cancel-confirm">
+                    <p style={{ color: "#c62828", fontWeight: 500, marginBottom: "0.5rem" }}>⚠️ Azione irreversibile</p>
+                    <p>Eliminando il profilo verranno cancellati permanentemente il tuo account e tutti i dati associati. Se hai un abbonamento attivo, verrà cancellato immediatamente su Stripe senza rimborso del periodo residuo.</p>
+                    <div className="profile-cancel-confirm-btns" style={{ marginTop: "1rem" }}>
+                      <button className="profile-cancel-yes" disabled={deleteLoading} onClick={async () => {
+                        setDeleteLoading(true);
+                        try {
+                          // 1. Cancella abbonamento Stripe se presente
+                          if (user.plan !== "free") {
+                            await fetch("/api/cancel-subscription", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email: user.email, immediate: true })
+                            });
+                          }
+                          // 2. Elimina da subscriptions table
+                          await supabase.from("subscriptions").delete().eq("email", user.email);
+                          // 3. Sign out e cancella utente Auth
+                          await supabase.auth.signOut();
+                          // 4. Chiama API backend per cancellare l'utente da Supabase Auth (richiede service role)
+                          await fetch("/api/delete-account", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: user.email })
+                          });
+                          setUser(null);
+                          setHistory([]);
+                          setScreen("landing");
+                        } catch(e) {
+                          setDeleteMsg("Errore durante l'eliminazione: " + e.message);
+                          setDeleteLoading(false);
+                        }
+                      }}>
+                        {deleteLoading ? "Eliminazione in corso..." : "Sì, elimina definitivamente"}
+                      </button>
+                      <button className="profile-cancel-no" onClick={() => setDeleteConfirm(false)}>Annulla</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: "0.75rem", lineHeight: 1.5 }}>
+                      Elimina permanentemente il tuo account e tutti i dati associati. L'abbonamento attivo verrà cancellato su Stripe.
+                    </p>
+                    <button
+                      className="profile-cancel-btn"
+                      style={{ color: "#c62828", borderColor: "#fca5a5" }}
+                      onClick={() => setDeleteConfirm(true)}>
+                      Elimina account
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );
