@@ -1824,7 +1824,7 @@ ${proposal.payoff ? `<div class="section">
                         onUpgrade={() => setShowUpgradeModal(true)}
                         compareSelected={compareSelected}
                         onToggleCompare={() => toggleCompare(p, i)}
-                        onExportPDF={() => exportSinglePDF(e)} />
+                        onExportPDF={() => exportSinglePDF(p)} />
                 ))}
               </div>
             </div>
