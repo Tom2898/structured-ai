@@ -125,6 +125,9 @@ const css = `
   .plan-cta.filled { border: none; background: var(--accent); color: #fff; }
   .plan-cta.filled:hover { background: var(--accent-mid); }
   .landing-footer { padding: 2rem 2.5rem; border-top: 1px solid var(--border); text-align: center; font-size: 11px; color: var(--muted); }
+  .disclaimer-banner { background: #fffbeb; border-bottom: 1px solid #f0e6c0; padding: 10px 2rem; display: flex; align-items: center; gap: 10px; font-size: 11px; color: #7a6a30; font-family: 'DM Mono', monospace; line-height: 1.5; }
+  .disclaimer-banner-icon { flex-shrink: 0; font-size: 14px; }
+  .disclaimer-banner-close { margin-left: auto; flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 14px; color: #a09060; padding: 0 4px; }
 
   /* AUTH */
   .auth-wrap { min-height: 100vh; display: flex; }
@@ -732,6 +735,7 @@ export default function App() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelMsg, setCancelMsg] = useState("");
+  const [disclaimerVisible, setDisclaimerVisible] = useState(true);
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
   const [horizon, setHorizon] = useState("");
@@ -1207,11 +1211,7 @@ ${proposal.payoff ? `<div class="section">
       <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
       <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
         onClick={() => { if (!comingSoon) {
-  if (plan.priceId) {
-    handleStripeCheckout(plan);
-  } else {
-    setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth");
-  }
+  setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth");
 } }}>
         {comingSoon ? "Prossimamente" : plan.cta}
       </button>
@@ -1219,7 +1219,7 @@ ${proposal.payoff ? `<div class="section">
   );
 })}          </div>
         </div>
-        <div className="landing-footer">© 2025 StructuredAI · Solo a scopo informativo · Non costituisce consulenza finanziaria</div>
+        <div className="landing-footer"><div style={{ marginBottom: "0.5rem", fontWeight: 500, letterSpacing: "0.05em" }}>AVVERTENZA LEGALE</div><div style={{ maxWidth: 720, margin: "0 auto", lineHeight: 1.7 }}>StructuredAI è uno strumento di supporto a esclusivo uso professionale rivolto a consulenti finanziari e operatori del settore. I contenuti generati — inclusi term sheet, scenari di payoff e strutture di prodotto — hanno finalità puramente illustrativa e informativa. Non costituiscono consulenza finanziaria, raccomandazione di investimento, offerta o sollecitazione all'acquisto o alla vendita di strumenti finanziari ai sensi della Direttiva MiFID II (2014/65/UE) e del D.Lgs. 58/1998 (TUF). StructuredAI non è un'impresa di investimento autorizzata da Banca d'Italia o Consob. I rendimenti illustrati sono ipotetici e non garantiti. La valutazione di adeguatezza verso il cliente finale rimane responsabilità esclusiva del consulente. I codici ISIN visualizzati si riferiscono a prodotti esistenti su Euronext a scopo di riferimento e non rappresentano un'offerta di vendita.</div><div style={{ marginTop: "1rem" }}>© 2025 StructuredAI · <a href="mailto:structuredai@proton.me" style={{ color: "var(--muted)", textDecoration: "underline" }}>structuredai@proton.me</a></div></div>
       </div>
     </>
   );
@@ -1356,7 +1356,15 @@ ${proposal.payoff ? `<div class="section">
         </div>
       </nav>
 
-      <div className="main">
+      {disclaimerVisible && (
+        <div className="disclaimer-banner">
+          <span className="disclaimer-banner-icon">⚠️</span>
+          <span>
+            <strong>Solo uso professionale.</strong> I contenuti generati da StructuredAI hanno finalità esclusivamente illustrativa e informativa. Non costituiscono consulenza finanziaria né raccomandazione di investimento ai sensi della Direttiva MiFID II. La valutazione di adeguatezza verso il cliente finale rimane responsabilità esclusiva del consulente.
+          </span>
+          <button className="disclaimer-banner-close" onClick={() => setDisclaimerVisible(false)} title="Chiudi">✕</button>
+        </div>
+      )}
 
         {/* DASHBOARD */}
         {tab === "dashboard" && (
@@ -1415,40 +1423,55 @@ ${proposal.payoff ? `<div class="section">
         {tab === "history" && (
           <>
             <div className="page-title">Storico Proposte</div>
-            <div className="page-sub">Tutte le proposte generate in questa sessione</div>
-            {viewingHistory ? (
-              <>
-                <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>← Torna alla lista</button>
-                <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} · {viewingHistory.risk} · {viewingHistory.horizon}</div>
-                <div className="output-area">
-                  {viewingHistory.proposals.map((p, i) => (
-                    <ProposalCard key={i} proposal={p} index={i} isPro={isPro} canSearchISIN={canSearchISIN} isRetail={isRetail}
-                      userUnderlyings={viewingHistory.underlyingLabels}
-                      onSearchISIN={() => searchISIN(p, `h_${viewingHistory.id}_${i}`)}
-                      isinLoading={isinLoading[`h_${viewingHistory.id}_${i}`]}
-                      isinResults={isinResults[`h_${viewingHistory.id}_${i}`]}
-                      onUpgrade={() => setShowUpgradeModal(true)}
-                      compareSelected={compareSelected}
-                      onToggleCompare={() => toggleCompare(p, `h_${viewingHistory.id}_${i}`)}
-                      onExportPDF={() => exportSinglePDF(p)} />
-                  ))}
+            {user.plan === "free" ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem 1rem", textAlign: "center", gap: "1rem" }}>
+                <div style={{ fontSize: 40 }}>🔒</div>
+                <div style={{ fontFamily: "'Fraunces', serif", fontSize: "1.4rem", fontWeight: 300, color: "var(--text)" }}>Storico non disponibile</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", maxWidth: 340, lineHeight: 1.6 }}>
+                  Il piano Free non include lo storico delle proposte. Passa a Retail per salvare e rivedere tutte le strutture generate.
                 </div>
-              </>
-            ) : history.length === 0 ? (
-              <div className="empty-state">Nessuna proposta ancora. Generane una →</div>
-            ) : (
-              <div className="history-list">
-                {history.map(item => (
-                  <div key={item.id} className="history-item" onClick={() => setViewingHistory(item)}>
-                    <div className="history-icon">📋</div>
-                    <div className="history-info">
-                      <div className="history-name">{item.objective} · {item.risk}</div>
-                      <div className="history-meta">{item.horizon} · {item.proposals.length} strutture · {item.date}</div>
-                    </div>
-                    <div className="history-chevron">→</div>
-                  </div>
-                ))}
+                <button className="auth-btn" style={{ marginTop: "0.5rem", maxWidth: 240 }} onClick={() => setShowUpgradeModal(true)}>
+                  Upgrade a Retail →
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="page-sub">Tutte le proposte generate in questa sessione</div>
+                {viewingHistory ? (
+                  <>
+                    <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>← Torna alla lista</button>
+                    <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} · {viewingHistory.risk} · {viewingHistory.horizon}</div>
+                    <div className="output-area">
+                      {viewingHistory.proposals.map((p, i) => (
+                        <ProposalCard key={i} proposal={p} index={i} isPro={isPro} canSearchISIN={canSearchISIN} isRetail={isRetail}
+                          userUnderlyings={viewingHistory.underlyingLabels}
+                          onSearchISIN={() => searchISIN(p, `h_${viewingHistory.id}_${i}`)}
+                          isinLoading={isinLoading[`h_${viewingHistory.id}_${i}`]}
+                          isinResults={isinResults[`h_${viewingHistory.id}_${i}`]}
+                          onUpgrade={() => setShowUpgradeModal(true)}
+                          compareSelected={compareSelected}
+                          onToggleCompare={() => toggleCompare(p, `h_${viewingHistory.id}_${i}`)}
+                          onExportPDF={() => exportSinglePDF(p)} />
+                      ))}
+                    </div>
+                  </>
+                ) : history.length === 0 ? (
+                  <div className="empty-state">Nessuna proposta ancora. Generane una →</div>
+                ) : (
+                  <div className="history-list">
+                    {history.map(item => (
+                      <div key={item.id} className="history-item" onClick={() => setViewingHistory(item)}>
+                        <div className="history-icon">📋</div>
+                        <div className="history-info">
+                          <div className="history-name">{item.objective} · {item.risk}</div>
+                          <div className="history-meta">{item.horizon} · {item.proposals.length} strutture · {item.date}</div>
+                        </div>
+                        <div className="history-chevron">→</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
