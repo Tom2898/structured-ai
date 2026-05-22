@@ -1830,6 +1830,7 @@ ${proposal.payoff ? `<div class="section">
             </div>
           </>
         )}
+      </>
       </div>
 
       {/* COMPARE BAR */}
