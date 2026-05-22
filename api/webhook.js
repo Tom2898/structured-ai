@@ -49,11 +49,44 @@ export default async function handler(req, res) {
     if (error) console.error('Supabase upsert error:', error.message);
   }
 
+  // Abbonamento cancellato (disdetta o fallimento definitivo)
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object;
     await supabase.from('subscriptions')
       .update({ plan: 'free', status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('stripe_subscription_id', subscription.id);
+  }
+
+  // Stato abbonamento aggiornato (es. past_due, unpaid, active dopo rinnovo)
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object;
+    const status = subscription.status; // active | past_due | unpaid | canceled | ...
+    const plan = status === 'active' ? 'retail' : 'free';
+    await supabase.from('subscriptions')
+      .update({ plan, status, updated_at: new Date().toISOString() })
+      .eq('stripe_subscription_id', subscription.id);
+  }
+
+  // Pagamento rinnovo fallito — mette lo status in past_due come avviso
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object;
+    const subscriptionId = invoice.subscription;
+    if (subscriptionId) {
+      await supabase.from('subscriptions')
+        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subscriptionId);
+    }
+  }
+
+  // Rinnovo andato a buon fine — conferma status active
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object;
+    const subscriptionId = invoice.subscription;
+    if (subscriptionId && invoice.billing_reason === 'subscription_cycle') {
+      await supabase.from('subscriptions')
+        .update({ plan: 'retail', status: 'active', updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subscriptionId);
+    }
   }
 
   res.status(200).json({ received: true });
