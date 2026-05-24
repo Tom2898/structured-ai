@@ -6,7 +6,7 @@ const supabase = createClient(
 );
 
 // ── Limits (keep in sync with App.jsx PLANS) ─────────────────────────────────
-const PLAN_LIMITS = { free: 3, retail: 100, pro: 500 };
+const PLAN_LIMITS = { free: 3, retail: 60, pro: 500 };
 
 // ── Input constraints ─────────────────────────────────────────────────────────
 const MAX_PROMPT_CHARS = 8000;
