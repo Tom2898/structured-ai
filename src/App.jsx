@@ -43,9 +43,8 @@ const CAT_COLOR = {
 
 const PLANS = [
   { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
-  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 50, features: ["50 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
-  { id: "pro", name: "Pro", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "" },
-  { id: "unlimited", name: "Unlimited", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "" },
+  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
+  { id: "pro", name: "Pro", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: 500, features: ["500 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "" },
 ];
 
 const FREE_LIMIT = 3;
@@ -764,7 +763,7 @@ export default function App() {
   }
 
   React.useEffect(() => { refreshUsage(); }, [user?.email]);
-  const isPro = user?.plan === "pro" || user?.plan === "unlimited";
+  const isPro = user?.plan === "pro";
   const isRetail = user?.plan === "retail";
   const canSearchISIN = isPro || isRetail;
 
@@ -1194,7 +1193,7 @@ ${proposal.payoff ? `<div class="section">
           <div className="plans-grid">
 {PLANS.map(plan => {
   const price = billingAnnual ? plan.priceAnnual : plan.priceMonthly;
-  const comingSoon = plan.id === "pro" || plan.id === "unlimited";
+  const comingSoon = plan.id === "pro";
   return (
     <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}${comingSoon ? " coming-soon-card" : ""}`}
       style={comingSoon ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none", position: "relative" } : {}}>
@@ -1528,7 +1527,7 @@ ${proposal.payoff ? `<div class="section">
           const used = proposalsUsed;
           const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
           const fillClass = pct >= 100 ? "full" : pct >= 75 ? "warn" : "";
-          const nextPlan = PLANS.find(p => p.id === (user.plan === "free" ? "retail" : user.plan === "retail" ? "pro" : user.plan === "pro" ? "unlimited" : null));
+          const nextPlan = PLANS.find(p => p.id === (user.plan === "free" ? "retail" : user.plan === "retail" ? "pro" : null));
           return (
             <div className="profile-page">
               <div className="profile-card">
@@ -1681,7 +1680,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="paywall-banner">
                 <div className="paywall-banner-text">
                   <strong>Hai usato tutte le {proposalLimit} proposte del piano {planInfo?.name}</strong>
-                  <span>{user?.plan === "unlimited" ? "" : user?.plan === "pro" ? "Passa a Unlimited per proposte illimitate." : user?.plan === "retail" ? "Passa a Pro per 100 proposte/mese." : "Passa a Retail per 50 proposte/mese o a Pro per 100."}</span>
+                  <span>{user?.plan === "pro" ? "" : user?.plan === "retail" ? "Passa a Pro per 500 proposte/mese." : "Passa a Retail per 100 proposte/mese."}</span>
                 </div>
                 <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
               </div>
