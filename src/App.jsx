@@ -828,7 +828,21 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
   const [authError, setAuthError] = useState("");
-  const [tab, setTab] = useState("generator");
+
+  // Persist active tab in URL so refresh reopens the same tab
+  const VALID_TABS = ["generator", "dashboard", "catalog", "history", "profile"];
+  const getTabFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    return VALID_TABS.includes(t) ? t : "generator";
+  };
+  const [tab, setTabState] = useState(getTabFromUrl);
+  function setTab(newTab) {
+    setTabState(newTab);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", newTab);
+    window.history.replaceState({}, "", "?" + params.toString());
+  }
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
@@ -1510,7 +1524,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -1856,7 +1870,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
