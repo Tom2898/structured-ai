@@ -828,23 +828,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
   const [authError, setAuthError] = useState("");
-
-  // Read initial tab from URL so that refreshing preserves the current tab
-  const VALID_TABS = ["generator", "dashboard", "catalog", "history", "profile"];
-  const getTabFromUrl = () => {
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("tab");
-    return VALID_TABS.includes(t) ? t : "generator";
-  };
-  const [tab, setTabState] = useState(getTabFromUrl);
-
-  // Wrapper that keeps the URL in sync whenever the tab changes
-  function setTab(newTab) {
-    setTabState(newTab);
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", newTab);
-    window.history.replaceState({}, "", "?" + params.toString());
-  }
+  const [tab, setTab] = useState("generator");
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
@@ -1526,7 +1510,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -1792,31 +1776,82 @@ ${proposal.payoff ? `<div class="section">
                   {cancelMsg ? (
                     <div style={{fontSize:"13px", color: cancelMsg.includes("errore") || cancelMsg.includes("Errore") ? "#c62828" : "var(--accent)", padding:"8px 0"}}>{cancelMsg}</div>
                   ) : user.cancelAtPeriodEnd ? (
-                    /* Abbonamento già disdetto — mostra pulsante di rinnovo */
+                    /* Abbonamento già disdetto — mostra opzione mensile e annuale */
                     <div>
-                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12, lineHeight:1.6 }}>
-                        Il tuo abbonamento scade il <strong>{user.cancelAt ? new Date(user.cancelAt).toLocaleDateString("it-IT") : "—"}</strong>. Puoi riattivarlo per continuare ad avere accesso a tutte le funzionalità Retail.
+                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:16, lineHeight:1.6 }}>
+                        Il tuo abbonamento scade il <strong>{user.cancelAt ? new Date(user.cancelAt).toLocaleDateString("it-IT") : "—"}</strong>. Scegli come continuare:
                       </div>
-                      <button className="profile-upgrade-btn" style={{ marginTop:0 }} disabled={cancelLoading} onClick={async () => {
-                        setCancelLoading(true);
-                        try {
-                          const { data: { session: s } } = await supabase.auth.getSession();
-                          const res = await fetch("/api/reactivate-subscription", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          });
-                          const data = await res.json();
-                          if (data.success) {
-                            setCancelMsg("✓ Abbonamento riattivato con successo!");
-                            setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null }));
-                          } else {
-                            setCancelMsg("Errore: " + (data.error || "riprova."));
-                          }
-                        } catch(e) { setCancelMsg("Errore: " + e.message); }
-                        setCancelLoading(false);
-                      }}>
-                        {cancelLoading ? "..." : "Riattiva abbonamento Retail →"}
-                      </button>
+                      {/* Opzione mensile */}
+                      <div style={{ border:"1.5px solid var(--border)", borderRadius:"var(--radius-sm)", padding:"12px 14px", marginBottom:10 }}>
+                        <div style={{ fontSize:11, fontWeight:500, marginBottom:4 }}>Piano Mensile — €19.90/mese</div>
+                        <div style={{ fontSize:11, color:"var(--muted)", marginBottom:10 }}>Riattiva l'abbonamento corrente senza variazioni.</div>
+                        <button className="profile-upgrade-btn" style={{ marginTop:0, width:"100%" }} disabled={cancelLoading} onClick={async () => {
+                          setCancelLoading(true);
+                          try {
+                            const { data: { session: s } } = await supabase.auth.getSession();
+                            const res = await fetch("/api/reactivate-subscription", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setCancelMsg("✓ Abbonamento mensile riattivato con successo!");
+                              setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null }));
+                            } else {
+                              setCancelMsg("Errore: " + (data.error || "riprova."));
+                            }
+                          } catch(e) { setCancelMsg("Errore: " + e.message); }
+                          setCancelLoading(false);
+                        }}>
+                          {cancelLoading ? "..." : "Riattiva mensile →"}
+                        </button>
+                      </div>
+                      {/* Opzione annuale */}
+                      <div style={{ border:"1.5px solid var(--accent)", borderRadius:"var(--radius-sm)", padding:"12px 14px", background:"var(--accent-light)" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                          <span style={{ fontSize:11, fontWeight:500 }}>Piano Annuale — €17.90/mese</span>
+                          <span style={{ fontSize:10, padding:"2px 8px", borderRadius:99, background:"#e8f5e9", color:"#2e7d32", border:"1px solid rgba(46,125,50,0.2)" }}>Risparmia €24/anno</span>
+                        </div>
+                        <div style={{ fontSize:11, color:"var(--muted)", marginBottom:10 }}>Riattiva e passa subito alla fatturazione annuale a €214.80/anno.</div>
+                        <button className="profile-upgrade-btn" style={{ marginTop:0, width:"100%", background:"var(--accent)" }} disabled={cancelLoading} onClick={async () => {
+                          setSwitchAnnualLoading(true);
+                          setCancelLoading(true);
+                          try {
+                            const { data: { session: s } } = await supabase.auth.getSession();
+                            // First reactivate, then switch to annual
+                            const reactivateRes = await fetch("/api/reactivate-subscription", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                            });
+                            const reactivateData = await reactivateRes.json();
+                            if (!reactivateData.success) {
+                              setCancelMsg("Errore nella riattivazione: " + (reactivateData.error || "riprova."));
+                              setCancelLoading(false);
+                              setSwitchAnnualLoading(false);
+                              return;
+                            }
+                            // Now switch to annual
+                            const annualRes = await fetch("/api/switch-to-annual", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                              body: JSON.stringify({ priceIdAnnual: "price_1TahpuHcctqaGDVzW2q6nztf" })
+                            });
+                            const annualData = await annualRes.json();
+                            if (annualData.success) {
+                              setCancelMsg("✓ Abbonamento riattivato e aggiornato al piano annuale. Grazie!");
+                              setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null, billingInterval: "year" }));
+                            } else {
+                              // Reactivation worked but annual switch failed — still show reactivated state
+                              setCancelMsg("✓ Abbonamento riattivato (mensile). Errore nel passaggio ad annuale: " + (annualData.error || "riprova dalla sezione 'Passa al piano annuale'."));
+                              setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null }));
+                            }
+                          } catch(e) { setCancelMsg("Errore di connessione: " + e.message); }
+                          setCancelLoading(false);
+                          setSwitchAnnualLoading(false);
+                        }}>
+                          {cancelLoading ? "..." : "Riattiva come annuale — €214.80/anno →"}
+                        </button>
+                      </div>
                     </div>
                   ) : cancelConfirm ? (
                     <div className="profile-cancel-confirm">
@@ -1859,7 +1894,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
