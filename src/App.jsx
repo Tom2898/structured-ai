@@ -44,8 +44,8 @@ const CAT_COLOR = {
 const PLANS = [
   { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
   { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 50, features: ["50 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
-  { id: "pro", name: "Pro", priceMonthly: "€49", priceAnnual: "€39", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "Risparmia €120/anno" },
-  { id: "unlimited", name: "Unlimited", priceMonthly: "€199", priceAnnual: "€159", period: "/mese", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "Risparmia €480/anno" },
+  { id: "pro", name: "Pro", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "" },
+  { id: "unlimited", name: "Unlimited", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: Infinity, features: ["Proposte illimitate", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Note cliente sulle proposte", "Export CSV/webhook", "Supporto prioritario"], cta: "Prova Unlimited gratis", highlight: false, annualNote: "" },
 ];
 
 const FREE_LIMIT = 3;
@@ -1201,7 +1201,7 @@ ${proposal.payoff ? `<div class="section">
       {comingSoon && <div style={{ position:"absolute", top:12, right:12, background:"#6b7280", color:"#fff", fontSize:9, padding:"2px 8px", borderRadius:99, letterSpacing:"0.08em", fontFamily:"'DM Mono',monospace" }}>PROSSIMAMENTE</div>}
       {plan.highlight && !comingSoon && <div className="plan-badge">BEST VALUE</div>}
       <div className="plan-name">{plan.name.toUpperCase()}</div>
-      <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>
+      {price === "—" ? <div style={{ fontSize:12, color:"var(--muted)", fontStyle:"italic", margin:"6px 0" }}>Prezzo su richiesta</div> : <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>}
       {billingAnnual && plan.annualNote && <div className="plan-annual-note">✓ {plan.annualNote}</div>}
       <div className="plan-divider" />
       <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
@@ -1925,12 +1925,15 @@ ${proposal.payoff ? `<div class="section">
                     <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}`} style={{ padding:"1.25rem" }}>
                       {plan.highlight && <div className="plan-badge">BEST VALUE</div>}
                       <div className="plan-name">{plan.name.toUpperCase()}</div>
-                      <div style={{ marginBottom:"0.25rem" }}>
-                        {billingAnnual && plan.annualNote && <span className="plan-price-strike">{plan.priceMonthly}</span>}
-                        <span className="plan-price" style={{ fontSize:"1.6rem" }}>{price}</span>
-                        <span className="plan-period">{plan.period}</span>
-                      </div>
-                      {billingAnnual && plan.annualNote && <div className="plan-annual-note" style={{ marginBottom:"0.6rem" }}>✓ {plan.annualNote}</div>}
+                      {price === "—"
+                        ? <div style={{ fontSize:12, color:"var(--muted)", fontStyle:"italic", margin:"6px 0 0.25rem" }}>Prezzo su richiesta</div>
+                        : <div style={{ marginBottom:"0.25rem" }}>
+                            {billingAnnual && plan.annualNote && <span className="plan-price-strike">{plan.priceMonthly}</span>}
+                            <span className="plan-price" style={{ fontSize:"1.6rem" }}>{price}</span>
+                            <span className="plan-period">{plan.period}</span>
+                          </div>
+                      }
+                      {billingAnnual && plan.annualNote && price !== "—" && <div className="plan-annual-note" style={{ marginBottom:"0.6rem" }}>✓ {plan.annualNote}</div>}
                       <ul className="plan-features" style={{ marginBottom:"1rem" }}>
                         {plan.features.map(f => <li key={f}>{f}</li>)}
                       </ul>
