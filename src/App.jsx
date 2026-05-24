@@ -1132,7 +1132,11 @@ ${proposal.payoff ? `<div class="section">
     <div class="payoff-item" style="background:#fce4ec"><div style="font-size:10px;color:#c62828;margin-bottom:4px">📉 RIBASSO</div>${proposal.payoff.bear || ""}</div>
   </div>
 </div>` : ""}
-<div class="footer">Documento generato da StructuredAI · Uso riservato · Solo a scopo informativo</div>
+<div class="footer">
+  <strong>AVVERTENZE LEGALI</strong><br>
+  Documento generato da StructuredAI. Riservato all'uso esclusivo dell'intermediario finanziario destinatario. <strong>Non costituisce consulenza finanziaria, offerta o sollecitazione all'investimento</strong> ai sensi del D.Lgs. 58/1998 (TUF) e della Direttiva MiFID II (2014/65/UE).<br>
+  I prodotti strutturati sono strumenti finanziari complessi con rischio di perdita parziale o totale del capitale. Prima di qualsiasi operazione verificare adeguatezza/appropriatezza del cliente (artt. 24-25 MiFID II) e consegnare la documentazione PRIIPs (KID). Dati, termini e scenari di payoff sono puramente indicativi e non vincolanti. I codici ISIN devono essere verificati su Euronext Markets o Borsa Italiana prima dell'utilizzo. I rendimenti passati non sono indicativi di quelli futuri. © 2025 StructuredAI
+</div>
 </body></html>`;
     const win = window.open("", "_blank");
     win.document.write(html);
@@ -1219,7 +1223,23 @@ ${proposal.payoff ? `<div class="section">
   );
 })}          </div>
         </div>
-        <div className="landing-footer">© 2025 StructuredAI · Solo a scopo informativo · Non costituisce consulenza finanziaria</div>
+        <div className="landing-footer">
+          <div style={{ maxWidth: 860, margin: "0 auto", lineHeight: 1.7 }}>
+            <div style={{ fontWeight: 600, marginBottom: "0.4rem", letterSpacing: "0.05em", fontSize: 10 }}>AVVERTENZE LEGALI E INFORMATIVA AI SENSI DELLA NORMATIVA MIFID II</div>
+            <div style={{ marginBottom: "0.5rem" }}>
+              StructuredAI è uno strumento di supporto operativo riservato esclusivamente a intermediari finanziari abilitati, consulenti finanziari iscritti all'Albo OCF e professionisti del settore. <strong>Le proposte generate da questa piattaforma non costituiscono consulenza finanziaria, investimento consigliato, sollecitazione all'investimento né offerta al pubblico</strong> ai sensi del D.Lgs. 58/1998 (TUF), del Regolamento (UE) n. 1286/2014 (PRIIPs) e della Direttiva 2014/65/UE (MiFID II).
+            </div>
+            <div style={{ marginBottom: "0.5rem" }}>
+              I certificati e i prodotti strutturati sono strumenti finanziari complessi che comportano un rischio significativo di perdita parziale o totale del capitale investito. Prima di qualsiasi operazione, il cliente finale deve ricevere la documentazione informativa obbligatoria (KID/KIID, Prospetto) e deve essere effettuata la valutazione di adeguatezza o appropriatezza ai sensi degli artt. 24–25 MiFID II e del Regolamento Delegato (UE) 2017/565. I rendimenti passati non sono indicativi di quelli futuri.
+            </div>
+            <div style={{ marginBottom: "0.5rem" }}>
+              I dati, i termini e gli scenari di payoff generati sono puramente indicativi e non vincolanti. I codici ISIN eventualmente suggeriti derivano da ricerche automatizzate su mercati regolamentati e devono essere verificati sulle fonti ufficiali (Euronext Markets, Borsa Italiana, CONSOB) prima di qualsiasi utilizzo. StructuredAI non garantisce l'accuratezza, la completezza o l'aggiornamento delle informazioni fornite.
+            </div>
+            <div>
+              © 2025 StructuredAI · Tutti i diritti riservati · <span style={{ opacity: 0.7 }}>P.IVA [da inserire] · Sede legale: [da inserire] · Non autorizzato alla prestazione di servizi di investimento</span>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
@@ -1238,7 +1258,7 @@ ${proposal.payoff ? `<div class="section">
             <h1>Strutture su misura,<br />in pochi secondi.</h1>
             <p>Dalla profilatura del cliente alla proposta completa. Term sheet, payoff, ISIN reali — tutto in un click.</p>
           </div>
-          <div className="auth-left-bottom">© 2025 StructuredAI · Solo a scopo informativo</div>
+          <div className="auth-left-bottom">© 2025 StructuredAI</div>
         </div>
         <div className="auth-right">
           <div className="auth-card">
@@ -1355,6 +1375,14 @@ ${proposal.payoff ? `<div class="section">
           <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
+
+      {/* DISCLAIMER BANNER — sempre visibile nell'app */}
+      <div style={{ background:"#fffbeb", borderBottom:"1px solid rgba(184,148,42,0.35)", padding:"8px 2rem", display:"flex", alignItems:"flex-start", gap:10, fontSize:10, color:"#7a5c10", lineHeight:1.6 }}>
+        <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>⚠️</span>
+        <span>
+          <strong>AVVERTENZE LEGALI (MiFID II / PRIIPs):</strong> Le proposte generate sono esclusivamente a uso dell'intermediario abilitato destinatario e <strong>non costituiscono consulenza finanziaria, offerta o sollecitazione all'investimento</strong> ai sensi del D.Lgs. 58/1998 e della Direttiva 2014/65/UE. I prodotti strutturati comportano rischio di perdita parziale o totale del capitale. Verificare sempre l'adeguatezza del cliente e consegnare la documentazione KID/PRIIPs prima di qualsiasi operazione. Dati e scenari indicativi, non vincolanti.
+        </span>
+      </div>
 
       <div className="main">
 
@@ -1891,7 +1919,7 @@ ${proposal.payoff ? `<div class="section">
           {riskAppetite && <div>Rischio: {riskAppetite} · Orizzonte: {horizon}</div>}
         </div>
       </div>
-      <div className="pdf-watermark">Documento generato da StructuredAI · Uso riservato · Solo a scopo informativo</div>
+      <div className="pdf-watermark">DOCUMENTO RISERVATO — StructuredAI · Uso esclusivo dell'intermediario · Non costituisce consulenza finanziaria ai sensi MiFID II · Dati indicativi, non vincolanti · Verificare sempre su fonti ufficiali prima di operare</div>
     </>
   );
 }
@@ -2023,7 +2051,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
                   </>
               }
               <div style={{ fontSize:10, color:"var(--muted)", marginTop:6, fontStyle:"italic", borderTop:"1px solid var(--border)", paddingTop:6 }}>
-                ⚠️ Verificare sempre su <strong>Euronext Markets</strong> o <strong>Borsa Italiana</strong> prima di operare. Dati indicativi.
+                ⚠️ I codici ISIN sono indicativi e derivano da ricerca automatizzata. <strong>Verificare sempre disponibilità, condizioni aggiornate e KID su Euronext Markets o Borsa Italiana prima di qualsiasi operazione.</strong> Non costituisce raccomandazione d'investimento.
               </div>
             </div>
           )}
