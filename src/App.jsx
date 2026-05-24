@@ -1597,7 +1597,24 @@ ${proposal.payoff ? `<div class="section">
                 <div className="profile-card">
                   <div className="profile-card-title">Gestione abbonamento</div>
                   {cancelMsg ? (
-                    <div style={{fontSize:"13px", color: cancelMsg.includes("errore") ? "#c62828" : "var(--accent)", padding:"8px 0"}}>{cancelMsg}</div>
+                    <div style={{fontSize:"13px", color: cancelMsg.includes("errore") || cancelMsg.includes("Errore") ? "#c62828" : "var(--accent)", padding:"8px 0"}}>{cancelMsg}</div>
+                  ) : user.cancelAtPeriodEnd ? (
+                    /* Abbonamento già disdetto — mostra pulsante di rinnovo */
+                    <div>
+                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12, lineHeight:1.6 }}>
+                        Il tuo abbonamento scade il <strong>{user.cancelAt ? new Date(user.cancelAt).toLocaleDateString("it-IT") : "—"}</strong>. Puoi rinnovarlo per continuare ad avere accesso a tutte le funzionalità Retail.
+                      </div>
+                      <button className="profile-upgrade-btn" style={{ marginTop:0 }} disabled={cancelLoading} onClick={async () => {
+                        setCancelLoading(true);
+                        try {
+                          const retailPlan = PLANS.find(p => p.id === "retail");
+                          if (retailPlan?.priceId) await handleStripeCheckout(retailPlan);
+                        } catch(e) { setCancelMsg("Errore: " + e.message); }
+                        setCancelLoading(false);
+                      }}>
+                        {cancelLoading ? "..." : "Rinnova abbonamento Retail →"}
+                      </button>
+                    </div>
                   ) : cancelConfirm ? (
                     <div className="profile-cancel-confirm">
                       <p>Sei sicuro di voler cancellare l'abbonamento Retail? L'accesso rimarrà attivo fino alla fine del periodo pagato.</p>
@@ -1614,10 +1631,7 @@ ${proposal.payoff ? `<div class="section">
                             if (data.success) {
                               setCancelMsg("Abbonamento cancellato. Rimarrà attivo fino alla fine del periodo.");
                               setCancelConfirm(false);
-                              // Update Supabase Auth metadata so refresh reads correct plan
-                              await supabase.auth.updateUser({ data: { plan: "free" } });
-                              await supabase.from("subscriptions").update({ plan: "free", status: "cancelling" }).eq("email", user.email);
-                              setUser(u => ({ ...u, plan: "free" }));
+                              setUser(u => ({ ...u, cancelAtPeriodEnd: true }));
                             } else {
                               setCancelMsg("Errore: " + (data.error || "riprova."));
                             }
