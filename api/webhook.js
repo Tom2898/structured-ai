@@ -246,19 +246,42 @@ export default async function handler(req, res) {
     if (email) await sendEmail(email, planChangeEmail(email, 'retail', 'free'));
   }
 
-  // Stato abbonamento aggiornato (es. past_due → active, upgrade/downgrade)
+  // Stato abbonamento aggiornato (es. past_due → active, disdetta, upgrade/downgrade)
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object;
     const status = subscription.status;
+    const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
+    const cancelAt = subscription.cancel_at || null; // unix timestamp
+
+    // Se status è active ma cancel_at_period_end è true → l'utente ha disdetto
+    // Il piano rimane attivo fino a cancel_at, ma lo segnaliamo nel DB
     const newPlan = status === 'active' ? 'retail' : 'free';
+    const previousCancelAtPeriodEnd = subscription.previous_attributes?.cancel_at_period_end;
     const previousStatus = subscription.previous_attributes?.status;
 
     await supabase.from('subscriptions')
-      .update({ plan: newPlan, status, updated_at: new Date().toISOString() })
+      .update({
+        plan: newPlan,
+        status,
+        cancel_at_period_end: cancelAtPeriodEnd,
+        cancel_at: cancelAt ? new Date(cancelAt * 1000).toISOString() : null,
+        updated_at: new Date().toISOString()
+      })
       .eq('stripe_subscription_id', subscription.id);
 
-    // Invia email solo se lo status è effettivamente cambiato
-    if (previousStatus && previousStatus !== status) {
+    // Invia email se l'utente ha appena disdetto (cancel_at_period_end è diventato true)
+    if (cancelAtPeriodEnd && previousCancelAtPeriodEnd === false) {
+      let email = null;
+      try {
+        const customer = await stripe.customers.retrieve(subscription.customer);
+        email = customer.email;
+      } catch(e) { console.error('Customer fetch error:', e.message); }
+
+      if (email) await sendEmail(email, planChangeEmail(email, 'retail', 'free'));
+    }
+
+    // Invia email se lo status è cambiato (es. past_due → active)
+    if (previousStatus && previousStatus !== status && !cancelAtPeriodEnd) {
       let email = null;
       try {
         const customer = await stripe.customers.retrieve(subscription.customer);

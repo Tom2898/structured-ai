@@ -628,37 +628,39 @@ export default function App() {
     const name = sessionUser.user_metadata?.name || sessionUser.email.split("@")[0];
     const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
     let plan = "free";
+    let cancelAtPeriodEnd = false;
+    let cancelAt = null;
     try {
-      // If coming from Stripe, poll up to 8s for webhook to write active status
       const maxAttempts = waitForActive ? 8 : 1;
       for (let i = 0; i < maxAttempts; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 1000));
         const { data: subData } = await supabase
           .from("subscriptions")
-          .select("plan,status")
+          .select("plan,status,cancel_at_period_end,cancel_at")
           .eq("email", sessionUser.email)
           .single();
 
-        if (!subData) break; // no row at all — stay free, fall through to metadata
+        if (!subData) break; // no row at all — fall through to metadata
 
         // Row exists — Supabase is the source of truth, never fall back to metadata
         const s = (subData.status || "").toLowerCase();
         if (s === "active" && subData.plan) {
           plan = subData.plan;
+          cancelAtPeriodEnd = subData.cancel_at_period_end === true;
+          cancelAt = subData.cancel_at || null;
         }
-        // Any non-active status (cancelled, canceled, cancelling, past_due, etc.) → free
-        return { name, email: sessionUser.email, initials, plan };
+        // Any non-active status -> free
+        return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt };
       }
 
-      // No row found at all — fall back to auth metadata only in this case
+      // No row at all — fall back to auth metadata only in this case
       const metaPlan = sessionUser.user_metadata?.plan;
       if (metaPlan && metaPlan !== "free") plan = metaPlan;
 
     } catch (_) {
-      // Network/query error — fail safe to free
       plan = "free";
     }
-    return { name, email: sessionUser.email, initials, plan };
+    return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt };
   }
 
   // Restore session on page load / refresh, and handle Stripe success redirect
@@ -1369,6 +1371,17 @@ ${proposal.payoff ? `<div class="section">
           <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
+
+      {/* CANCELLATION BANNER — visibile se abbonamento in disdetta */}
+      {user?.cancelAtPeriodEnd && user?.cancelAt && (
+        <div style={{ background:"#fff3e0", borderBottom:"1px solid rgba(230,81,0,0.3)", padding:"8px 2rem", display:"flex", alignItems:"center", gap:10, fontSize:11, color:"#e65100" }}>
+          <span style={{ fontSize:14, flexShrink:0 }}>⚠️</span>
+          <span>
+            Il tuo abbonamento <strong>Retail</strong> è stato disdetto e scadrà il <strong>{new Date(user.cancelAt).toLocaleDateString("it-IT")}</strong>. Dopo quella data passerai automaticamente al piano Free.
+            {" "}<span style={{ textDecoration:"underline", cursor:"pointer" }} onClick={() => setShowUpgradeModal(true)}>Rinnova ora →</span>
+          </span>
+        </div>
+      )}
 
       {/* DISCLAIMER BANNER — sempre visibile nell'app */}
       <div style={{ background:"#fffbeb", borderBottom:"1px solid rgba(184,148,42,0.35)", padding:"8px 2rem", display:"flex", alignItems:"flex-start", gap:10, fontSize:10, color:"#7a5c10", lineHeight:1.6 }}>
