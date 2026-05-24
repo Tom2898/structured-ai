@@ -170,6 +170,36 @@ function planChangeEmail(email, oldPlan, newPlan) {
   };
 }
 
+
+function switchToAnnualEmail(email) {
+  const appUrl = process.env.VITE_APP_URL || 'https://structured-ai-l4gg.vercel.app';
+  const bodyHtml = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:40px;margin-bottom:16px;">🗓️</div>
+      <div style="font-family:Georgia,serif;font-size:26px;font-weight:300;color:#1a3a2a;line-height:1.2;margin-bottom:12px;">Sei passato al piano annuale</div>
+      <div style="font-size:13px;color:#7a8c7e;line-height:1.6;">Il tuo abbonamento Retail è ora fatturato annualmente.</div>
+    </div>
+    <div style="background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
+      <div style="font-size:10px;color:#7a8c7e;letter-spacing:0.1em;margin-bottom:10px;">RIEPILOGO</div>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;border-bottom:1px solid #f0ede6;">✓ &nbsp;€17.90/mese (€214.80/anno)</td></tr>
+        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;border-bottom:1px solid #f0ede6;">✓ &nbsp;Risparmio di €24 rispetto al mensile</td></tr>
+        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;">✓ &nbsp;La differenza pro-rata è già stata addebitata</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin-bottom:28px;">
+      <a href="${appUrl}" style="display:inline-block;background:#1a3a2a;color:#f5f4ef;font-size:13px;font-weight:500;letter-spacing:0.04em;text-decoration:none;padding:14px 36px;border-radius:8px;">Vai alla piattaforma →</a>
+    </div>
+    <div style="height:1px;background:#e8e5dc;margin-bottom:20px;"></div>
+    <div style="font-size:11px;color:#a0a89e;text-align:center;line-height:1.6;">
+      Se non hai richiesto questa modifica, contatta <a href="mailto:structuredai@proton.me" style="color:#7a8c7e;">structuredai@proton.me</a>
+    </div>`;
+  return {
+    subject: 'Abbonamento Retail aggiornato al piano annuale',
+    html: emailShell({ title: 'Piano annuale attivo', preheader: 'Ora risparmi €24/anno con il piano annuale.', bodyHtml }),
+  };
+}
+
 async function sendEmail(to, { subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -213,12 +243,20 @@ export default async function handler(req, res) {
     const subscriptionId = session.subscription;
     const customerId = session.customer;
 
+    // Fetch subscription to get billing interval
+    let billingInterval = 'month';
+    try {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      billingInterval = sub.items.data[0]?.plan?.interval || 'month';
+    } catch(e) { console.error('Sub fetch error:', e.message); }
+
     const { error } = await supabase.from('subscriptions').upsert({
       email,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
       plan: 'retail',
       status: 'active',
+      billing_interval: billingInterval,
       updated_at: new Date().toISOString()
     }, { onConflict: 'email' });
 
@@ -259,15 +297,30 @@ export default async function handler(req, res) {
     const previousCancelAtPeriodEnd = subscription.previous_attributes?.cancel_at_period_end;
     const previousStatus = subscription.previous_attributes?.status;
 
+    // Detect billing interval from subscription items
+    const interval = subscription.items?.data?.[0]?.plan?.interval || 'month';
+    const previousInterval = subscription.previous_attributes?.items?.data?.[0]?.plan?.interval;
+
     await supabase.from('subscriptions')
       .update({
         plan: newPlan,
         status,
         cancel_at_period_end: cancelAtPeriodEnd,
         cancel_at: cancelAt ? new Date(cancelAt * 1000).toISOString() : null,
+        billing_interval: interval,
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', subscription.id);
+
+    // Send email if user just switched from monthly to annual
+    if (interval === 'year' && previousInterval === 'month') {
+      let email = null;
+      try {
+        const customer = await stripe.customers.retrieve(subscription.customer);
+        email = customer.email;
+      } catch(e) { console.error('Customer fetch error:', e.message); }
+      if (email) await sendEmail(email, switchToAnnualEmail(email));
+    }
 
     // Invia email se l'utente ha appena disdetto (cancel_at_period_end è diventato true)
     if (cancelAtPeriodEnd && previousCancelAtPeriodEnd === false) {
