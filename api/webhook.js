@@ -327,7 +327,7 @@ export default async function handler(req, res) {
 
     // Se status è active ma cancel_at_period_end è true → l'utente ha disdetto
     // Il piano rimane attivo fino a cancel_at, ma lo segnaliamo nel DB
-    const newPlan = status === 'active' ? 'retail' : 'free';
+    const newPlan = (status === 'active' || status === 'past_due') ? 'retail' : 'free';
     const previousCancelAtPeriodEnd = subscription.previous_attributes?.cancel_at_period_end;
     const previousStatus = subscription.previous_attributes?.status;
 
@@ -357,7 +357,7 @@ export default async function handler(req, res) {
     }
 
     // Invia email se l'utente ha appena disdetto (cancel_at_period_end è diventato true)
-    if (cancelAtPeriodEnd && previousCancelAtPeriodEnd === false) {
+    if (cancelAtPeriodEnd && !previousCancelAtPeriodEnd) {
       let email = null;
       try {
         const customer = await stripe.customers.retrieve(subscription.customer);
