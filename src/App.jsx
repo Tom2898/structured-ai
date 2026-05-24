@@ -2147,9 +2147,15 @@ ${proposal.payoff ? `<div class="section">
               <div className="modal-plans">
                 {PLANS.map(plan => {
                   const price = billingAnnual ? plan.priceAnnual : plan.priceMonthly;
+                  const isCurrentPlan = plan.id === user.plan;
+                  const isComingSoon = plan.comingSoon;
+                  const isDisabled = isComingSoon || isCurrentPlan;
                   return (
-                    <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}`} style={{ padding:"1.25rem" }}>
-                      {plan.highlight && <div className="plan-badge">BEST VALUE</div>}
+                    <div key={plan.id}
+                      className={`plan-card${plan.highlight && !isComingSoon ? " highlight" : ""}${isComingSoon ? " coming-soon-card" : ""}`}
+                      style={{ padding:"1.25rem", opacity: isComingSoon ? 0.45 : 1, filter: isComingSoon ? "grayscale(0.4)" : "none", pointerEvents: isComingSoon ? "none" : "auto" }}>
+                      {plan.highlight && !isComingSoon && <div className="plan-badge">BEST VALUE</div>}
+                      {isComingSoon && <div className="plan-coming" style={{ marginBottom:"0.5rem" }}>PROSSIMAMENTE</div>}
                       <div className="plan-name">{plan.name.toUpperCase()}</div>
                       {price === "—"
                         ? <div style={{ fontSize:12, color:"var(--muted)", fontStyle:"italic", margin:"6px 0 0.25rem" }}>Prezzo su richiesta</div>
@@ -2163,9 +2169,15 @@ ${proposal.payoff ? `<div class="section">
                       <ul className="plan-features" style={{ marginBottom:"1rem" }}>
                         {plan.features.map(f => <li key={f}>{f}</li>)}
                       </ul>
-                      <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
-                        onClick={() => { setUser(u => ({ ...u, plan: plan.id })); setShowUpgradeModal(false); }}>
-                        {plan.id === user.plan ? "Piano attuale" : plan.cta}
+                      <button
+                        className={`plan-cta ${isCurrentPlan ? "outline" : isComingSoon ? "ghost" : plan.priceId ? "filled" : "outline"}`}
+                        disabled={isDisabled}
+                        style={isCurrentPlan ? { borderColor:"var(--border-md)", color:"var(--muted)", cursor:"default" } : {}}
+                        onClick={isDisabled ? undefined : () => {
+                          if (plan.priceId) handleStripeCheckout(plan, billingAnnual);
+                          else { setUser(u => ({ ...u, plan: plan.id })); setShowUpgradeModal(false); }
+                        }}>
+                        {isCurrentPlan ? "Piano attuale" : isComingSoon ? "Prossimamente" : plan.cta}
                       </button>
                     </div>
                   );
