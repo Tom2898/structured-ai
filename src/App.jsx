@@ -828,21 +828,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
   const [authError, setAuthError] = useState("");
-
-  // Persist active tab in URL so refresh reopens the same tab
-  const VALID_TABS = ["generator", "dashboard", "catalog", "history", "profile"];
-  const getTabFromUrl = () => {
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("tab");
-    return VALID_TABS.includes(t) ? t : "generator";
-  };
-  const [tab, setTabState] = useState(getTabFromUrl);
-  function setTab(newTab) {
-    setTabState(newTab);
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", newTab);
-    window.history.replaceState({}, "", "?" + params.toString());
-  }
+  const [tab, setTab] = useState("generator");
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
@@ -1524,7 +1510,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -1561,16 +1547,27 @@ ${proposal.payoff ? `<div class="section">
               <div className="stat-card"><div className="stat-label">PIANO ATTUALE</div><div className="stat-value" style={{ fontSize:"1.1rem", paddingTop:4 }}>{planInfo.name}</div><div className="stat-sub">{proposalLimit === Infinity ? "Proposte illimitate" : `${proposalsUsed} / ${proposalLimit} utilizzate`}</div></div>
             </div>
             {user.plan === "free" && (
-              <div className="paywall-banner">
+              <div className="paywall-banner" style={{ flexDirection: "column", alignItems: "flex-start", gap: 14 }}>
                 <div className="paywall-banner-text">
                   <strong>Piano Free ({proposalsUsed}/{FREE_LIMIT} proposte utilizzate)</strong>
-                  <span>Passa a Retail (€19.90/mese) per ricerca ISIN attivi, o a Pro per confronto affiancato e molto altro.</span>
+                  <span>Passa a Retail per ricerca ISIN attivi, o a Pro per confronto affiancato e molto altro.</span>
                 </div>
-                <button className="upgrade-btn" onClick={() => {
-                  const retailPlan = PLANS.find(p => p.id === "retail");
-                  if (retailPlan?.priceId) handleStripeCheckout(retailPlan);
-                  else setShowUpgradeModal(true);
-                }}>Upgrade a Retail →</button>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button className="upgrade-btn" style={{ background: "var(--accent)", opacity: 1 }} onClick={() => {
+                    const retailPlan = PLANS.find(p => p.id === "retail");
+                    if (retailPlan?.priceId) handleStripeCheckout(retailPlan, false);
+                    else setShowUpgradeModal(true);
+                  }}>Retail mensile — €19.90/mese →</button>
+                  <button className="upgrade-btn" style={{ background: "var(--accent)", opacity: 1, display: "flex", alignItems: "center", gap: 6 }} onClick={() => {
+                    const retailPlan = PLANS.find(p => p.id === "retail");
+                    if (retailPlan?.priceIdAnnual) handleStripeCheckout(retailPlan, true);
+                    else setShowUpgradeModal(true);
+                  }}>
+                    Retail annuale — €17.90/mese
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "#e8f5e9", color: "#2e7d32", border: "1px solid rgba(46,125,50,0.3)" }}>Risparmia €24</span>
+                    →
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -1870,7 +1867,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setTabState("generator"); window.history.replaceState({}, "", "/"); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
