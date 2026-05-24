@@ -723,6 +723,7 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
+  const [authBillingAnnual, setAuthBillingAnnual] = useState(false);
 
   // Helper: build user object reading plan from subscriptions table (source of truth)
   async function buildUserFromSession(sessionUser, { waitForActive = false } = {}) {
@@ -874,8 +875,9 @@ export default function App() {
     setObjective(val);
     setSelectedProductIds([]);
   }
-async function handleStripeCheckout(plan) {
-  const selectedPriceId = billingAnnual && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId;
+async function handleStripeCheckout(plan, forceAnnual = null) {
+  const isAnnual = forceAnnual !== null ? forceAnnual : billingAnnual;
+  const selectedPriceId = isAnnual && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId;
   if (!selectedPriceId) return false;
   try {
     const res = await fetch("/api/checkout", {
@@ -915,7 +917,7 @@ async function handleStripeCheckout(plan) {
         const retailPlan = PLANS.find(p => p.id === 'retail');
         if (retailPlan?.priceId) {
           setAuthError("Reindirizzamento a Stripe in corso...");
-          const ok = await handleStripeCheckout(retailPlan);
+          const ok = await handleStripeCheckout(retailPlan, authBillingAnnual);
           if (!ok) {
             // Stripe failed — error already shown by handleStripeCheckout
           }
@@ -1431,13 +1433,24 @@ ${proposal.payoff ? `<div class="section">
                 {authMode === "signup" && (
                   <div className="plan-selector">
                     <label>PIANO</label>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                      <span style={{ fontSize:11, color: !authBillingAnnual ? "var(--text)" : "var(--muted)", cursor:"pointer" }} onClick={() => setAuthBillingAnnual(false)}>Mensile</span>
+                      <button onClick={() => setAuthBillingAnnual(b => !b)} style={{ width:36, height:20, borderRadius:99, background: authBillingAnnual ? "var(--accent)" : "var(--border-md)", border:"none", cursor:"pointer", position:"relative", padding:0, flexShrink:0, transition:"background .2s" }}>
+                        <div style={{ width:14, height:14, borderRadius:"50%", background:"#fff", position:"absolute", top:3, left:3, transition:"transform .2s", transform: authBillingAnnual ? "translateX(16px)" : "none", boxShadow:"0 1px 3px rgba(0,0,0,.2)" }} />
+                      </button>
+                      <span style={{ fontSize:11, color: authBillingAnnual ? "var(--text)" : "var(--muted)", cursor:"pointer" }} onClick={() => setAuthBillingAnnual(true)}>Annuale</span>
+                      {authBillingAnnual && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:99, background:"#e8f5e9", color:"#2e7d32", border:"1px solid rgba(46,125,50,.2)" }}>Retail: €17.90/mese</span>}
+                    </div>
                     <div className="plan-opts">
-                      {PLANS.map(p => (
-                        <button key={p.id} className={`plan-opt${authPlan === p.id ? " selected" : ""}`} onClick={() => setAuthPlan(p.id)}>
-                          <span className="plan-opt-name">{p.name}</span>
-                          <span className="plan-opt-price">{p.priceMonthly}/mese</span>
-                        </button>
-                      ))}
+                      {PLANS.map(p => {
+                        const displayPrice = authBillingAnnual && p.priceAnnual !== p.priceMonthly ? p.priceAnnual : p.priceMonthly;
+                        return (
+                          <button key={p.id} className={`plan-opt${authPlan === p.id ? " selected" : ""}`} onClick={() => setAuthPlan(p.id)}>
+                            <span className="plan-opt-name">{p.name}</span>
+                            <span className="plan-opt-price">{displayPrice}/mese</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
