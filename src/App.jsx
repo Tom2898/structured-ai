@@ -732,13 +732,14 @@ export default function App() {
     let plan = "free";
     let cancelAtPeriodEnd = false;
     let cancelAt = null;
+    let billingInterval = "month";
     try {
       const maxAttempts = waitForActive ? 8 : 1;
       for (let i = 0; i < maxAttempts; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 1000));
         const { data: subData } = await supabase
           .from("subscriptions")
-          .select("plan,status,cancel_at_period_end,cancel_at")
+          .select("plan,status,cancel_at_period_end,cancel_at,billing_interval")
           .eq("email", sessionUser.email)
           .single();
 
@@ -750,9 +751,10 @@ export default function App() {
           plan = subData.plan;
           cancelAtPeriodEnd = subData.cancel_at_period_end === true;
           cancelAt = subData.cancel_at || null;
+          billingInterval = subData.billing_interval || "month";
         }
         // Any non-active status -> free
-        return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt };
+        return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
       }
 
       // No row at all — fall back to auth metadata only in this case
@@ -762,7 +764,7 @@ export default function App() {
     } catch (_) {
       plan = "free";
     }
-    return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt };
+    return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
   }
 
   // Restore session on page load / refresh, and handle Stripe success redirect
@@ -829,6 +831,8 @@ export default function App() {
   const [tab, setTab] = useState("generator");
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
+  const [switchAnnualMsg, setSwitchAnnualMsg] = useState("");
   const [cancelMsg, setCancelMsg] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
@@ -1684,7 +1688,7 @@ ${proposal.payoff ? `<div class="section">
                 </div>
                 <div className="profile-field">
                   <span className="profile-field-label">PREZZO</span>
-                  <span className="profile-field-value">{currentPlan.priceMonthly}{currentPlan.period}</span>
+                  <span className="profile-field-value">{user.billingInterval === "year" ? `${currentPlan.priceAnnual}/mese (annuale)` : `${currentPlan.priceMonthly}${currentPlan.period}`}</span>
                 </div>
                 <div className="profile-field">
                   <span className="profile-field-label">PROPOSTE INCLUSE</span>
@@ -1731,6 +1735,41 @@ ${proposal.payoff ? `<div class="section">
                 ))}
               </div>
 
+              {user.plan === "retail" && user.billingInterval !== "year" && !user.cancelAtPeriodEnd && (
+                <div className="profile-card">
+                  <div className="profile-card-title">Passa al piano annuale</div>
+                  <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14, lineHeight:1.7 }}>
+                    Passa alla fatturazione annuale a <strong>€17.90/mese</strong> (€214.80/anno).<br/>
+                    Risparmi <strong>€24/anno</strong> rispetto al mensile. Stripe addebiterà solo la differenza pro-rata per i giorni rimanenti del ciclo attuale.
+                  </div>
+                  {switchAnnualMsg ? (
+                    <div style={{ fontSize:12, color: switchAnnualMsg.includes("errore") || switchAnnualMsg.includes("Errore") ? "#c62828" : "var(--accent)", padding:"8px 0" }}>{switchAnnualMsg}</div>
+                  ) : (
+                    <button className="profile-upgrade-btn" style={{ marginTop:0 }} disabled={switchAnnualLoading} onClick={async () => {
+                      setSwitchAnnualLoading(true);
+                      try {
+                        const { data: { session: s } } = await supabase.auth.getSession();
+                        const res = await fetch("/api/switch-to-annual", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                          body: JSON.stringify({ priceIdAnnual: "price_1TahpuHcctqaGDVzW2q6nztf" })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setSwitchAnnualMsg("✓ Abbonamento aggiornato al piano annuale. Grazie!");
+                          setUser(u => ({ ...u, billingInterval: "year" }));
+                        } else {
+                          setSwitchAnnualMsg("Errore: " + (data.error || "riprova."));
+                        }
+                      } catch(e) { setSwitchAnnualMsg("Errore di connessione: " + e.message); }
+                      setSwitchAnnualLoading(false);
+                    }}>
+                      {switchAnnualLoading ? "..." : "Passa ad annuale — €214.80/anno →"}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {user.plan === "retail" && (
                 <div className="profile-card">
                   <div className="profile-card-title">Gestione abbonamento</div>
@@ -1740,17 +1779,27 @@ ${proposal.payoff ? `<div class="section">
                     /* Abbonamento già disdetto — mostra pulsante di rinnovo */
                     <div>
                       <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12, lineHeight:1.6 }}>
-                        Il tuo abbonamento scade il <strong>{user.cancelAt ? new Date(user.cancelAt).toLocaleDateString("it-IT") : "—"}</strong>. Puoi rinnovarlo per continuare ad avere accesso a tutte le funzionalità Retail.
+                        Il tuo abbonamento scade il <strong>{user.cancelAt ? new Date(user.cancelAt).toLocaleDateString("it-IT") : "—"}</strong>. Puoi riattivarlo per continuare ad avere accesso a tutte le funzionalità Retail.
                       </div>
                       <button className="profile-upgrade-btn" style={{ marginTop:0 }} disabled={cancelLoading} onClick={async () => {
                         setCancelLoading(true);
                         try {
-                          const retailPlan = PLANS.find(p => p.id === "retail");
-                          if (retailPlan?.priceId) await handleStripeCheckout(retailPlan);
+                          const { data: { session: s } } = await supabase.auth.getSession();
+                          const res = await fetch("/api/reactivate-subscription", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setCancelMsg("✓ Abbonamento riattivato con successo!");
+                            setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null }));
+                          } else {
+                            setCancelMsg("Errore: " + (data.error || "riprova."));
+                          }
                         } catch(e) { setCancelMsg("Errore: " + e.message); }
                         setCancelLoading(false);
                       }}>
-                        {cancelLoading ? "..." : "Rinnova abbonamento Retail →"}
+                        {cancelLoading ? "..." : "Riattiva abbonamento Retail →"}
                       </button>
                     </div>
                   ) : cancelConfirm ? (
