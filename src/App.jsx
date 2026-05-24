@@ -1520,7 +1520,21 @@ ${proposal.payoff ? `<div class="section">
           <span style={{ fontSize:14, flexShrink:0 }}>⚠️</span>
           <span>
             Il tuo abbonamento <strong>Retail</strong> è stato disdetto e scadrà il <strong>{new Date(user.cancelAt).toLocaleDateString("it-IT")}</strong>. Dopo quella data passerai automaticamente al piano Free.
-            {" "}<span style={{ textDecoration:"underline", cursor:"pointer" }} onClick={() => setShowUpgradeModal(true)}>Rinnova ora →</span>
+            {" "}<span style={{ textDecoration:"underline", cursor:"pointer", fontWeight:500 }} onClick={async () => {
+              try {
+                const { data: { session: s } } = await supabase.auth.getSession();
+                const res = await fetch("/api/reactivate-subscription", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                });
+                const data = await res.json();
+                if (data.success) {
+                  setUser(u => ({ ...u, cancelAtPeriodEnd: false, cancelAt: null }));
+                } else {
+                  alert("Errore: " + (data.error || "riprova."));
+                }
+              } catch(e) { alert("Errore: " + e.message); }
+            }}>Rinnova ora →</span>
           </span>
         </div>
       )}
