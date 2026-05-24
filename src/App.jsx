@@ -83,6 +83,7 @@ const PLANS = [
     highlight: false,
     comingSoon: false,
     priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf",
+    priceIdAnnual: "price_1TahpuHcctqaGDVzW2q6nztf",
   },
   {
     id: "pro-retail",
@@ -874,12 +875,13 @@ export default function App() {
     setSelectedProductIds([]);
   }
 async function handleStripeCheckout(plan) {
-  if (!plan.priceId) return false;
+  const selectedPriceId = billingAnnual && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId;
+  if (!selectedPriceId) return false;
   try {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: plan.priceId, email: user?.email || authEmail || "" })
+      body: JSON.stringify({ priceId: selectedPriceId, email: user?.email || authEmail || "" })
     });
     const data = await res.json();
     if (data.url) {
