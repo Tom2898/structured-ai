@@ -21,12 +21,13 @@ export default async function handler(req, res) {
     // ── 2. Cancel Stripe subscription if active ──────────────────────────────
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('stripe_subscription_id, status')
+      .select('stripe_subscription_id, stripe_customer_id, status')
       .eq('email', authUser.email)
       .single();
 
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
     if (sub?.stripe_subscription_id?.startsWith('sub_') && sub.status === 'active') {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
       try {
         await stripe.subscriptions.cancel(sub.stripe_subscription_id);
       } catch (e) {
@@ -34,7 +35,22 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 3. Delete from Supabase Auth (uses verified user id, not email from body) ──
+    // Delete Stripe customer entirely (removes saved payment methods too)
+    if (sub?.stripe_customer_id) {
+      try {
+        await stripe.customers.del(sub.stripe_customer_id);
+      } catch (e) {
+        console.error('Stripe customer delete error:', e.message);
+      }
+    }
+
+    // ── 3. Delete row from subscriptions table ───────────────────────────────
+    await supabase
+      .from('subscriptions')
+      .delete()
+      .eq('email', authUser.email);
+
+    // ── 4. Delete from Supabase Auth (uses verified user id, not email from body) ──
     const { error: deleteError } = await supabase.auth.admin.deleteUser(authUser.id);
     if (deleteError) throw deleteError;
 
