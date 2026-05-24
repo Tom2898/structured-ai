@@ -42,9 +42,97 @@ const CAT_COLOR = {
 };
 
 const PLANS = [
-  { id: "free", name: "Free", priceMonthly: "€0", priceAnnual: "€0", period: "/mese", proposalLimit: 3, features: ["3 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante"], cta: "Inizia gratis", highlight: false },
-  { id: "retail", name: "Retail", priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese", proposalLimit: 100, features: ["100 proposte/mese", "Tutti i 12 prodotti", "Export PDF", "Caratteristiche del sottostante", "🔍 Ricerca ISIN Euronext reali"], cta: "Inizia con Retail", highlight: false, priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf" },
-  { id: "pro", name: "Pro", priceMonthly: "—", priceAnnual: "—", period: "", proposalLimit: 500, features: ["500 proposte/mese", "Tutti i 12 prodotti", "Export PDF con brand", "Storico proposte", "🔍 Ricerca ISIN Euronext reali", "Confronto affiancato", "Supporto prioritario"], cta: "Prova Pro gratis", highlight: true, annualNote: "" },
+  {
+    id: "free",
+    name: "Free",
+    priceMonthly: "€0", priceAnnual: "€0", period: "/mese",
+    proposalLimit: 3,
+    features: [
+      "3 proposte/mese",
+      "Tutti i 12 prodotti",
+      "Export PDF",
+      "Caratteristiche del sottostante",
+    ],
+    featuresExcluded: [
+      "Ricerca ISIN Euronext",
+      "Storico proposte",
+      "Confronto strutture",
+    ],
+    cta: "Inizia gratis",
+    highlight: false,
+    comingSoon: false,
+  },
+  {
+    id: "retail",
+    name: "Retail",
+    priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese",
+    proposalLimit: 100,
+    features: [
+      "100 proposte/mese",
+      "Tutti i 12 prodotti",
+      "Export PDF",
+      "Caratteristiche del sottostante",
+      "🔍 Ricerca ISIN Euronext reali",
+    ],
+    featuresExcluded: [
+      "Storico proposte",
+      "Confronto strutture",
+    ],
+    cta: "Inizia con Retail",
+    highlight: false,
+    comingSoon: false,
+    priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf",
+  },
+  {
+    id: "pro-retail",
+    name: "Pro Retail",
+    priceMonthly: "—", priceAnnual: "—", period: "",
+    proposalLimit: 300,
+    features: [
+      "300 proposte/mese",
+      "Tutti i 12 prodotti",
+      "Export PDF",
+      "Caratteristiche del sottostante",
+      "🔍 Ricerca ISIN Euronext reali",
+      "Storico proposte personale",
+      "Confronto visivo strutture",
+      "Simulatore payoff interattivo",
+      "Score di rischio visivo",
+      "Spiegazione in linguaggio semplice",
+      "Notifiche scadenze e barriere",
+    ],
+    featuresExcluded: [],
+    cta: "Prossimamente",
+    highlight: false,
+    comingSoon: true,
+    audience: "retail",
+  },
+  {
+    id: "pro-advisor",
+    name: "Pro Advisor",
+    priceMonthly: "—", priceAnnual: "—", period: "",
+    proposalLimit: 500,
+    features: [
+      "500 proposte/mese",
+      "Tutti i 12 prodotti",
+      "Export PDF con brand",
+      "Caratteristiche del sottostante",
+      "🔍 Ricerca ISIN Euronext reali",
+      "Storico per cliente",
+      "Confronto affiancato strutture",
+      "Generazione massiva (multi-struttura)",
+      "Template clienti salvati",
+      "Rubrica clienti con profili",
+      "Link proposta condivisibile",
+      "Copertina PDF personalizzata",
+      "Supporto prioritario",
+    ],
+    featuresExcluded: [],
+    cta: "Prossimamente",
+    highlight: true,
+    comingSoon: true,
+    audience: "advisor",
+  },
 ];
 
 const FREE_LIMIT = 3;
@@ -101,28 +189,41 @@ const css = `
   .billing-label { font-size: 12px; color: var(--muted); cursor: pointer; }
   .billing-label.active { color: var(--text); font-weight: 500; }
   .billing-save-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; background: #e8f5e9; color: #2e7d32; letter-spacing: 0.03em; border: 1px solid rgba(46,125,50,0.2); }
-  .plan-annual-note { font-size: 10px; color: #2e7d32; margin-top: 3px; letter-spacing: 0.02em; }
+  .plan-annual-note { font-size: 10px; color: #2e7d32; margin-top: 3px; letter-spacing: 0.02em; height: 16px; }
   .plan-price-strike { font-size: 13px; color: var(--muted); text-decoration: line-through; margin-right: 4px; vertical-align: middle; }
-  .pricing-section { padding: 4rem 2.5rem; max-width: 900px; margin: 0 auto; }
+  .pricing-section { padding: 4rem 2.5rem; max-width: 1100px; margin: 0 auto; }
   .section-title { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 300; text-align: center; margin-bottom: 0.4rem; }
   .section-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 2.5rem; }
-  .plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .plan-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1.75rem 1.5rem; position: relative; transition: box-shadow 0.15s; }
+  .plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+  .plan-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; overflow: hidden; position: relative; transition: box-shadow 0.15s; }
   .plan-card:hover { box-shadow: var(--shadow-lg); }
-  .plan-card.highlight { border-color: var(--accent); }
-  .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: 10px; letter-spacing: 0.08em; padding: 3px 14px; border-radius: 99px; white-space: nowrap; }
-  .plan-name { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .plan-card.highlight { border-color: var(--accent); box-shadow: 0 4px 24px rgba(26,58,42,0.12); }
+  .plan-card.coming-soon-card { opacity: 0.55; filter: grayscale(0.3); pointer-events: none; }
+  .plan-card-top { padding: 1.5rem 1.5rem 1.25rem; }
+  .plan-card-bottom { padding: 1.25rem 1.5rem 1.5rem; }
+  .plan-badge-row { min-height: 22px; margin-bottom: 0.9rem; display: flex; align-items: center; gap: 6px; }
+  .plan-badge { font-size: 10px; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 99px; background: var(--accent); color: #fff; white-space: nowrap; }
+  .plan-coming { font-size: 10px; letter-spacing: 0.07em; padding: 3px 10px; border-radius: 99px; background: #e5e7eb; color: #6b7280; }
+  .plan-audience { font-size: 10px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border-md); color: var(--muted); }
+  .plan-name { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
   .plan-price { font-family: 'Fraunces', serif; font-size: 2.2rem; font-weight: 400; color: var(--text); line-height: 1; }
   .plan-period { font-size: 12px; color: var(--muted); margin-left: 2px; }
-  .plan-divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
-  .plan-features { list-style: none; margin-bottom: 1.5rem; }
-  .plan-features li { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .plan-features li::before { content: "✓"; color: var(--accent); font-size: 11px; flex-shrink: 0; }
-  .plan-cta { width: 100%; padding: 10px; border-radius: var(--radius-sm); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; }
+  .plan-price-note { font-size: 11px; color: var(--muted); font-style: italic; }
+  .plan-divider { height: 1px; background: var(--border); }
+  .plan-features { list-style: none; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 9px; }
+  .plan-features li { font-size: 11px; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
+  .plan-feat-check { width: 15px; height: 15px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; margin-top: 1px; }
+  .plan-feat-check.yes { background: var(--accent-light); color: var(--accent); }
+  .plan-feat-check.no { background: #f3f4f6; color: #d1d5db; }
+  .plan-feat-text { color: var(--text); }
+  .plan-feat-dim { color: var(--muted); opacity: 0.5; }
+  .plan-feat-tag { display: inline-flex; align-items: center; font-size: 9px; background: var(--accent-light); color: var(--accent); padding: 1px 6px; border-radius: 4px; margin-left: 4px; letter-spacing: 0.02em; }
+  .plan-cta { width: 100%; padding: 10px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; }
   .plan-cta.outline { border: 1.5px solid var(--border-md); background: none; color: var(--text); }
   .plan-cta.outline:hover { border-color: var(--accent); color: var(--accent); }
   .plan-cta.filled { border: none; background: var(--accent); color: #fff; }
   .plan-cta.filled:hover { background: var(--accent-mid); }
+  .plan-cta.ghost { border: 1.5px solid #d1d5db; background: none; color: #9ca3af; cursor: default; }
   .landing-footer { padding: 2rem 2.5rem; border-top: 1px solid var(--border); text-align: center; font-size: 11px; color: var(--muted); }
 
   /* AUTH */
@@ -1195,30 +1296,51 @@ ${proposal.payoff ? `<div class="section">
           <div className="plans-grid">
 {PLANS.map(plan => {
   const price = billingAnnual ? plan.priceAnnual : plan.priceMonthly;
-  const comingSoon = plan.id === "pro";
+  const comingSoon = plan.comingSoon;
+  const allFeatures = [
+    ...(plan.features || []).map(f => ({ text: f, included: true })),
+    ...(plan.featuresExcluded || []).map(f => ({ text: f, included: false })),
+  ];
   return (
-    <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}${comingSoon ? " coming-soon-card" : ""}`}
-      style={comingSoon ? { opacity: 0.5, filter: "grayscale(0.4)", pointerEvents: "none", position: "relative" } : {}}>
-      {comingSoon && <div style={{ position:"absolute", top:12, right:12, background:"#6b7280", color:"#fff", fontSize:9, padding:"2px 8px", borderRadius:99, letterSpacing:"0.08em", fontFamily:"'DM Mono',monospace" }}>PROSSIMAMENTE</div>}
-      {plan.highlight && !comingSoon && <div className="plan-badge">BEST VALUE</div>}
-      <div className="plan-name">{plan.name.toUpperCase()}</div>
-      {price === "—" ? <div style={{ fontSize:12, color:"var(--muted)", fontStyle:"italic", margin:"6px 0" }}>Prezzo su richiesta</div> : <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>}
-      {billingAnnual && plan.annualNote && <div className="plan-annual-note">✓ {plan.annualNote}</div>}
+    <div key={plan.id} className={`plan-card${plan.highlight ? " highlight" : ""}${comingSoon ? " coming-soon-card" : ""}`}>
+      <div className="plan-card-top">
+        <div className="plan-badge-row">
+          {comingSoon && <span className="plan-coming">PROSSIMAMENTE</span>}
+          {plan.highlight && !comingSoon && <span className="plan-badge">BEST VALUE</span>}
+          {plan.audience === "retail" && <span className="plan-audience">RETAIL</span>}
+          {plan.audience === "advisor" && <span className="plan-audience">ADVISOR</span>}
+        </div>
+        <div className="plan-name">{plan.name.toUpperCase()}</div>
+        {price === "—"
+          ? <div className="plan-price-note">Prezzo su richiesta</div>
+          : <div><span className="plan-price">{price}</span><span className="plan-period">{plan.period}</span></div>
+        }
+        <div className="plan-annual-note" />
+      </div>
       <div className="plan-divider" />
-      <ul className="plan-features">{plan.features.map(f => <li key={f}>{f}</li>)}</ul>
-      <button className={`plan-cta ${plan.highlight ? "filled" : "outline"}`}
-        onClick={() => { if (!comingSoon) {
-  if (plan.priceId) {
-    handleStripeCheckout(plan);
-  } else {
-    setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth");
-  }
-} }}>
-        {comingSoon ? "Prossimamente" : plan.cta}
-      </button>
+      <div className="plan-card-bottom">
+        <ul className="plan-features">
+          {allFeatures.map(f => (
+            <li key={f.text}>
+              <span className={`plan-feat-check ${f.included ? "yes" : "no"}`}>{f.included ? "✓" : "–"}</span>
+              <span className={f.included ? "plan-feat-text" : "plan-feat-dim"}>{f.text}</span>
+            </li>
+          ))}
+        </ul>
+        <button
+          className={`plan-cta ${comingSoon ? "ghost" : plan.highlight ? "filled" : "outline"}`}
+          disabled={comingSoon}
+          onClick={() => { if (!comingSoon) {
+            if (plan.priceId) handleStripeCheckout(plan);
+            else { setAuthPlan(plan.id); setAuthMode("signup"); setScreen("auth"); }
+          }}}>
+          {plan.cta}
+        </button>
+      </div>
     </div>
   );
-})}          </div>
+})}
+          </div>
         </div>
         <div className="landing-footer">
           <div style={{ maxWidth: 860, margin: "0 auto", lineHeight: 1.7 }}>
