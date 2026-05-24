@@ -638,31 +638,25 @@ export default function App() {
           .select("plan,status")
           .eq("email", sessionUser.email)
           .single();
-        if (subData?.status === "active" && subData?.plan) {
+
+        if (!subData) break; // no row at all — stay free, fall through to metadata
+
+        // Row exists — Supabase is the source of truth, never fall back to metadata
+        const s = (subData.status || "").toLowerCase();
+        if (s === "active" && subData.plan) {
           plan = subData.plan;
-          break;
         }
-        if (subData?.status === "cancelling" || subData?.status === "cancelled") {
-          plan = "free";
-          break;
-        }
+        // Any non-active status (cancelled, canceled, cancelling, past_due, etc.) → free
+        return { name, email: sessionUser.email, initials, plan };
       }
-      // Supabase had no record — fall back to auth metadata
-      if (plan === "free") {
-        const metaPlan = sessionUser.user_metadata?.plan;
-        if (metaPlan && metaPlan !== "free") {
-          // Double-check: only trust metadata if Supabase has no row at all
-          const { data: check } = await supabase
-            .from("subscriptions")
-            .select("status")
-            .eq("email", sessionUser.email)
-            .single();
-          if (!check) plan = metaPlan;
-        }
-      }
+
+      // No row found at all — fall back to auth metadata only in this case
+      const metaPlan = sessionUser.user_metadata?.plan;
+      if (metaPlan && metaPlan !== "free") plan = metaPlan;
+
     } catch (_) {
-      // No Supabase row at all — fall back to auth metadata
-      plan = sessionUser.user_metadata?.plan || "free";
+      // Network/query error — fail safe to free
+      plan = "free";
     }
     return { name, email: sessionUser.email, initials, plan };
   }
