@@ -1444,7 +1444,40 @@ ${proposal.payoff ? `<div class="section">
           <>
             <div className="page-title">Storico Proposte</div>
             <div className="page-sub">Tutte le proposte generate in questa sessione</div>
-            {viewingHistory ? (
+
+            {user.plan === "free" ? (
+              <div style={{ position: "relative" }}>
+                {/* Greyed-out fake list */}
+                <div style={{ filter: "blur(3px) grayscale(0.6)", opacity: 0.4, pointerEvents: "none", userSelect: "none" }}>
+                  {[1,2,3].map(i => (
+                    <div key={i} className="history-item" style={{ marginBottom: 10 }}>
+                      <div className="history-icon">📋</div>
+                      <div className="history-info">
+                        <div className="history-name" style={{ background:"var(--border)", borderRadius:4, height:13, width:`${140 + i * 30}px` }} />
+                        <div className="history-meta" style={{ background:"var(--border)", borderRadius:4, height:11, width:`${100 + i * 20}px`, marginTop:6 }} />
+                      </div>
+                      <div className="history-chevron">→</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Paywall overlay */}
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "2rem" }}>
+                  <div style={{ fontSize: 28 }}>🔒</div>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: "1.3rem", fontWeight: 300, textAlign: "center" }}>Storico disponibile dal piano Retail</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", maxWidth: 340, lineHeight: 1.7 }}>
+                    Accedi allo storico completo delle proposte generate, rivedile in qualsiasi momento e condividile con i clienti.
+                  </div>
+                  <button className="upgrade-btn" style={{ marginTop: 4 }} onClick={() => {
+                    const retailPlan = PLANS.find(p => p.id === "retail");
+                    if (retailPlan?.priceId) handleStripeCheckout(retailPlan);
+                    else setShowUpgradeModal(true);
+                  }}>
+                    Passa a Retail — €19.90/mese →
+                  </button>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>Oppure <span style={{ textDecoration: "underline", cursor: "pointer" }} onClick={() => setShowUpgradeModal(true)}>esplora tutti i piani</span></div>
+                </div>
+              </div>
+            ) : viewingHistory ? (
               <>
                 <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>← Torna alla lista</button>
                 <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} · {viewingHistory.risk} · {viewingHistory.horizon}</div>
