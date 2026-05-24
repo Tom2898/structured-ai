@@ -941,10 +941,11 @@ Reply ONLY with this JSON (no text outside):
 }`;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, email: user?.email })
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ prompt })
       });
       if (res.status === 429) {
         setShowUpgradeModal(true);
@@ -1020,9 +1021,10 @@ Rispondi SEMPRE e SOLO con questo JSON (nessun testo fuori):
 Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "Media". Non restituire mai un array vuoto se hai trovato qualcosa di correlato.`;
 
     try {
+      const { data: { session: isinSession } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}` },
         body: JSON.stringify({ prompt, useWebSearch: true })
       });
       const data = await res.json();
@@ -1621,10 +1623,11 @@ ${proposal.payoff ? `<div class="section">
                         <button className="profile-cancel-yes" disabled={cancelLoading} onClick={async () => {
                           setCancelLoading(true);
                           try {
-                            const res = await fetch("https://structured-ai-l4gg.vercel.app/api/cancel-subscription", {
+                            const { data: { session: cancelSession } } = await supabase.auth.getSession();
+                            const res = await fetch("/api/cancel-subscription", {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ email: user.email })
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cancelSession?.access_token}` },
+                              body: JSON.stringify({})
                             });
                             const data = await res.json();
                             if (data.success) {
