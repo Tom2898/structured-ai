@@ -20,12 +20,21 @@ export default async function handler(req, res) {
     // Get subscription id from Supabase
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
-      .select('stripe_subscription_id')
+      .select('stripe_subscription_id, cancel_at_period_end, status')
       .eq('email', user.email)
       .single();
 
     if (subError || !sub?.stripe_subscription_id) {
       return res.status(404).json({ error: 'Abbonamento non trovato' });
+    }
+
+    // Only allow reactivation if actually pending cancellation
+    if (!sub.cancel_at_period_end) {
+      return res.status(400).json({ error: 'Abbonamento non in disdetta.' });
+    }
+
+    if (sub.status !== 'active' && sub.status !== 'cancelling') {
+      return res.status(400).json({ error: 'Abbonamento non riattivabile.' });
     }
 
     // Reactivate by setting cancel_at_period_end = false
