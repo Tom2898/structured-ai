@@ -1,1 +1,19 @@
-{"functions":{"api/*.js":{"memory":512}},"rewrites":[{"source":"(.*)","destination":"/index.html"}]} 
+{
+  "functions": {
+    "api/*.js": {
+      "memory": 512
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/send-upgrade-emails",
+      "schedule": "0 9 1 * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
