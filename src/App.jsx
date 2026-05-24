@@ -65,7 +65,7 @@ const PLANS = [
   {
     id: "retail",
     name: "Retail",
-    priceMonthly: "€19.90", priceAnnual: "€19.90", period: "/mese",
+    priceMonthly: "€19.90", priceAnnual: "€17.90", period: "/mese",
     proposalLimit: 100,
     features: [
       "100 proposte/mese",
@@ -78,6 +78,7 @@ const PLANS = [
       "Storico proposte",
       "Confronto strutture",
     ],
+    annualNote: "Fatturato €214.80/anno",
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
@@ -99,7 +100,6 @@ const PLANS = [
       "Simulatore payoff interattivo",
       "Score di rischio visivo",
       "Spiegazione in linguaggio semplice",
-      "Notifiche scadenze e barriere",
     ],
     featuresExcluded: [],
     cta: "Prossimamente",
@@ -1291,7 +1291,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="billing-toggle-thumb" />
             </button>
             <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-            {billingAnnual && <span className="billing-save-badge">Risparmia fino a €480/anno</span>}
+            {billingAnnual && <span className="billing-save-badge">Retail: €17.90/mese · Risparmia €24/anno</span>}
           </div>
           <div className="plans-grid">
 {PLANS.map(plan => {
@@ -2054,7 +2054,7 @@ ${proposal.payoff ? `<div class="section">
                   <div className="billing-toggle-thumb" />
                 </button>
                 <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-                {billingAnnual && <span className="billing-save-badge">Risparmia fino a €480/anno</span>}
+                {billingAnnual && <span className="billing-save-badge">Retail: €17.90/mese · Risparmia €24/anno</span>}
               </div>
               <div className="modal-plans">
                 {PLANS.map(plan => {
