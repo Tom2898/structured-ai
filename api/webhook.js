@@ -200,6 +200,40 @@ function switchToAnnualEmail(email) {
   };
 }
 
+function paymentFailedEmail(email, isLastAttempt = false) {
+  const appUrl = process.env.VITE_APP_URL || 'https://structured-ai-l4gg.vercel.app';
+  const bodyHtml = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
+      <div style="font-family:Georgia,serif;font-size:26px;font-weight:300;color:#1a3a2a;line-height:1.2;margin-bottom:12px;">
+        ${isLastAttempt ? 'Abbonamento sospeso' : 'Pagamento non riuscito'}
+      </div>
+      <div style="font-size:13px;color:#7a8c7e;line-height:1.6;">
+        ${isLastAttempt
+          ? 'Tutti i tentativi di pagamento sono falliti. Il tuo account è stato declassato al piano Free.'
+          : 'Non è stato possibile addebitare il rinnovo del tuo abbonamento Retail. Stripe riproverà automaticamente nei prossimi giorni.'}
+      </div>
+    </div>
+    <div style="background:#fff8f0;border:1px solid #fcd9a0;border-radius:10px;padding:20px 24px;margin-bottom:28px;font-size:12px;color:#7a5a20;line-height:1.7;">
+      ${isLastAttempt
+        ? "Aggiorna il metodo di pagamento e rinnova l'abbonamento per ripristinare l'accesso completo."
+        : 'Verifica che il metodo di pagamento associato al tuo account sia valido e abbia fondi sufficienti. Se il problema persiste, aggiornalo prima del prossimo tentativo.'}
+    </div>
+    <div style="text-align:center;margin-bottom:28px;">
+      <a href="${appUrl}" style="display:inline-block;background:#1a3a2a;color:#f5f4ef;font-size:13px;font-weight:500;letter-spacing:0.04em;text-decoration:none;padding:14px 36px;border-radius:8px;">
+        ${isLastAttempt ? 'Rinnova abbonamento \u2192' : 'Aggiorna metodo di pagamento \u2192'}
+      </a>
+    </div>
+    <div style="height:1px;background:#e8e5dc;margin-bottom:20px;"></div>
+    <div style="font-size:11px;color:#a0a89e;text-align:center;line-height:1.6;">
+      Per assistenza scrivi a <a href="mailto:structuredai@proton.me" style="color:#7a8c7e;">structuredai@proton.me</a>
+    </div>`;
+  return {
+    subject: isLastAttempt ? 'Abbonamento sospeso \u2014 pagamento fallito' : 'Pagamento non riuscito \u2014 StructuredAI',
+    html: emailShell({ title: 'Problema di pagamento', preheader: isLastAttempt ? 'Il tuo account è stato declassato a Free.' : 'Verifica il tuo metodo di pagamento.', bodyHtml }),
+  };
+}
+
 async function sendEmail(to, { subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -352,10 +386,29 @@ export default async function handler(req, res) {
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object;
     const subscriptionId = invoice.subscription;
+
     if (subscriptionId) {
+      // Retrieve subscription to check attempt count
+      let attemptCount = invoice.attempt_count || 1;
+      let maxAttempts = 4; // Stripe default
+      const isLastAttempt = attemptCount >= maxAttempts;
+
       await supabase.from('subscriptions')
-        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+        .update({
+          status: isLastAttempt ? 'canceled' : 'past_due',
+          plan: isLastAttempt ? 'free' : 'retail',
+          updated_at: new Date().toISOString()
+        })
         .eq('stripe_subscription_id', subscriptionId);
+
+      // Send email warning
+      let email = null;
+      try {
+        const customer = await stripe.customers.retrieve(invoice.customer);
+        email = customer.email;
+      } catch(e) { console.error('Customer fetch error:', e.message); }
+
+      if (email) await sendEmail(email, paymentFailedEmail(email, isLastAttempt));
     }
   }
 
