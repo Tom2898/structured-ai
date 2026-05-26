@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { supabase } from './lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -82,8 +82,8 @@ const PLANS = [
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
-    priceId: "price_1TYZBRHcctqaGDVzptl5Nuxf",
-    priceIdAnnual: "price_1TahpuHcctqaGDVzW2q6nztf",
+    priceId: "price_1TbRXCQk0TtLIDLRAIVkTBeo",
+    priceIdAnnual: "price_1TbRXiQk0TtLIDLRuRYpb1ho",
   },
   {
     id: "pro-retail",
@@ -1926,7 +1926,7 @@ ${proposal.payoff ? `<div class="section">
                         const res = await fetch("/api/switch-to-annual", {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          body: JSON.stringify({ priceIdAnnual: "price_1TahpuHcctqaGDVzW2q6nztf" })
+                          body: JSON.stringify({ priceIdAnnual: "price_1TbRXiQk0TtLIDLRuRYpb1ho" })
                         });
                         const data = await res.json();
                         if (data.success) {
