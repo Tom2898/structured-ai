@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from './lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -263,6 +263,8 @@ const css = `
 
   /* APP NAV */
   .topnav { height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 2rem; gap: 1rem; position: sticky; top: 0; z-index: 100; }
+  .mobile-bottom-nav { display: none; }
+  .disclaimer-banner-mobile { display: none; }
   .topnav-logo { display: flex; align-items: center; gap: 8px; }
   .topnav-logo-mark { width: 28px; height: 28px; border: 1.5px solid var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 14px; color: var(--accent); }
   .topnav-logo-name { font-family: 'Fraunces', serif; font-size: 16px; color: var(--accent); font-weight: 400; }
@@ -342,6 +344,7 @@ const css = `
 
   /* GENERATOR */
   .gen-layout { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: start; }
+  .gen-mobile-toggle { display: none; }
   .gen-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
   .gen-form h3 { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 400; margin-bottom: 1.25rem; }
   .field-label { font-size: 10px; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 5px; display: block; }
@@ -523,35 +526,111 @@ const css = `
     .auth-card { max-width: 100%; }
     .plan-opts { grid-template-columns: repeat(2, 1fr); }
 
-    /* APP NAV */
-    .topnav { padding: 0 1rem; gap: 6px; height: 52px; }
-    .topnav-logo-name { display: none; }
-    .topnav-tab { padding: 5px 8px; font-size: 10px; letter-spacing: 0.02em; }
-    .logout-btn { padding: 4px 8px; font-size: 10px; }
-    .plan-pill { display: none; }
+    /* APP TOPNAV — mobile: compatto, solo logo + avatar */
+    .topnav { padding: 0 1rem; height: 52px; }
+    .topnav-tabs { display: none !important; }
+    .topnav-spacer { display: none; }
+    .topnav-logo-name { font-size: 15px; }
+    .logout-btn { display: none; }
+    .topnav-user { gap: 6px; }
+    .topnav-user > div:last-child { display: none; } /* hide name text on mobile, keep avatar + plan pill */
+    .plan-pill { font-size: 9px; padding: 1px 6px; }
 
-    /* MAIN */
-    .main { padding: 1.25rem 1rem; }
-    .page-title { font-size: 1.4rem; }
+    /* ── BOTTOM TAB BAR ─────────────────────────────────────────────────── */
+    .mobile-bottom-nav {
+      display: flex !important;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0 4px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      height: calc(60px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+    }
+    .mobile-bottom-nav button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; border: none; background: none; cursor: pointer; padding: 8px 4px 6px;
+      color: var(--muted); font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.03em;
+      transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+      position: relative; border-radius: 12px; margin: 4px 2px;
+    }
+    .mobile-bottom-nav button:active { background: var(--bg); transform: scale(0.94); }
+    .mobile-bottom-nav button.active { color: var(--accent); }
+    .mobile-bottom-nav button .tab-icon {
+      width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+      transition: transform 0.15s;
+    }
+    .mobile-bottom-nav button.active .tab-icon { transform: scale(1.08); }
+    .mobile-bottom-nav button.active::before {
+      content: '';
+      position: absolute;
+      top: 4px; left: 50%; transform: translateX(-50%);
+      width: 32px; height: 32px; border-radius: 10px;
+      background: var(--accent-light);
+      z-index: -1;
+    }
+    .tab-dot { display: none; } /* replaced by ::before highlight */
+
+    /* ── MAIN CONTENT — pad bottom for tab bar (single declaration, no conflict) */
+    .main {
+      padding: 1.25rem 1rem calc(76px + env(safe-area-inset-bottom, 0px));
+      max-width: 100%;
+    }
+    .page-title { font-size: 1.4rem; margin-bottom: 0.2rem; }
+    .page-sub { font-size: 11px; margin-bottom: 1.25rem; }
     .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 1.25rem; }
 
-    /* GENERATOR */
-    .gen-layout { grid-template-columns: 1fr; gap: 1rem; }
+    /* ── GENERATOR — mobile toggle form/output */
+    .gen-layout { grid-template-columns: 1fr; gap: 0; }
+    .gen-form { border-radius: 0 0 var(--radius) var(--radius); border-top: none; }
+    .output-area { padding-top: 12px; }
+    .output-placeholder { padding: 2rem 1.25rem; }
+    .gen-mobile-toggle {
+      display: flex; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; margin-bottom: 0;
+    }
+    .gen-mobile-toggle button {
+      flex: 1; padding: 10px 12px; font-size: 12px; font-family: 'DM Mono', monospace;
+      letter-spacing: 0.03em; border: none; background: none; cursor: pointer;
+      color: var(--muted); transition: all 0.15s; display: flex; align-items: center;
+      justify-content: center; gap: 6px; border-bottom: 2px solid transparent;
+    }
+    .gen-mobile-toggle button.active {
+      color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-light);
+    }
+    .gen-mobile-toggle-badge {
+      min-width: 16px; height: 16px; background: var(--accent); color: #fff;
+      border-radius: 99px; font-size: 9px; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0 4px;
+    }
+    /* Hide/show panels via data attribute */
+    .gen-layout[data-mobile-panel="output"] .gen-form { display: none; }
+    .gen-layout[data-mobile-panel="form"] .output-area { display: none; }
 
-    /* CATALOG */
-    .product-grid { grid-template-columns: 1fr; }
-    .catalog-filters { gap: 6px; }
+    /* Select/input bigger touch targets */
+    select.field-select,
+    input.field-input { font-size: 16px; padding: 10px 12px; } /* 16px prevents iOS zoom */
 
-    /* PROPOSAL CARDS */
-    .struct-sections { grid-template-columns: 1fr; }
+    /* ── CATALOG */
+    .product-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .product-card { padding: 0.875rem; }
+    .product-name { font-size: 12px; }
+    .product-desc { font-size: 10px; }
+    .catalog-filters { gap: 6px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+    .filter-btn { white-space: nowrap; flex-shrink: 0; }
+
+    /* ── PROPOSAL CARDS */
+    .proposal-body { padding: 1rem; }
+    .struct-sections { grid-template-columns: 1fr; gap: 8px; }
     .payoff-scenarios { grid-template-columns: 1fr; gap: 6px; }
-    .proposal-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .proposal-header-right { width: 100%; justify-content: flex-start; }
+    .proposal-header { padding: 10px 14px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .proposal-header-left { gap: 6px; }
+    .proposal-header-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
     .isin-row { grid-template-columns: 90px 1fr; gap: 6px; }
     .isin-row > span:nth-child(3) { display: none; }
     .isin-section-header { flex-direction: column; align-items: flex-start; gap: 6px; }
 
-    /* MODALS */
+    /* ── MODALS — slide up from bottom */
     .modal { border-radius: var(--radius) var(--radius) 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-width: 100%; max-height: 90vh; overflow-y: auto; }
     .modal-overlay { align-items: flex-end; padding: 0; }
     .modal-header { padding: 1.25rem 1.25rem 0; }
@@ -559,17 +638,27 @@ const css = `
     .modal-plans { grid-template-columns: 1fr; }
     .compare-modal { border-radius: var(--radius) var(--radius) 0 0; max-width: 100%; max-height: 90vh; }
 
-    /* COMPARE BAR */
+    /* ── COMPARE BAR */
     .compare-bar { padding: 10px 1rem; flex-wrap: wrap; gap: 8px; }
     .compare-bar-left { font-size: 11px; }
     .compare-bar-chips { display: none; }
 
-    /* PROFILE */
+    /* ── PROFILE */
     .profile-page { padding: 1.25rem 1rem; }
     .profile-card { padding: 1.25rem; }
 
-    /* HISTORY */
+    /* ── HISTORY */
     .history-item { padding: 0.875rem 1rem; }
+
+    /* ── DISCLAIMER — compact on mobile */
+    .disclaimer-banner { display: none !important; }
+    .disclaimer-banner-mobile { display: flex !important; }
+
+    /* ── GEN BUTTON — bigger tap target */
+    .gen-btn { padding: 13px; font-size: 13px; margin-top: 1.25rem; border-radius: 12px; }
+
+    /* ── ISIN search button — full width on mobile */
+    .isin-search-btn { font-size: 10px; padding: 4px 10px; }
   }
 
   /* TABLET (641–900px) */
@@ -854,6 +943,7 @@ export default function App() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [compareSelected, setCompareSelected] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [mobileGenPanel, setMobileGenPanel] = useState("form"); // "form" | "output"
 
   const planInfo = PLANS.find(p => p.id === (user?.plan || "free"));
   const [proposalsUsed, setProposalsUsed] = React.useState(0);
@@ -1070,6 +1160,7 @@ Reply ONLY with this JSON (no text outside):
       const clean = rawText.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
       setProposals(parsed.proposals || []);
+      setMobileGenPanel("output"); // switch to results on mobile
       refreshUsage();
       setIsinResults({});
       setIsinUsedIndex(null);
@@ -1502,10 +1593,12 @@ ${proposal.payoff ? `<div class="section">
           <div className="topnav-logo-mark">S</div>
           <div className="topnav-logo-name">StructuredAI</div>
         </div>
-        <div style={{ width: 16 }} />
-        {[["generator","Genera"],["catalog","Prodotti"],["history","Storico"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
-          <button key={t} className={`topnav-tab${tab === t ? " active" : ""}`} onClick={() => { setTab(t); setViewingHistory(null); }}>{label}</button>
-        ))}
+        <div className="topnav-tabs" style={{ display:"flex", alignItems:"center", gap:"1rem" }}>
+          <div style={{ width: 16 }} />
+          {[["generator","Genera"],["catalog","Prodotti"],["history","Storico"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
+            <button key={t} className={`topnav-tab${tab === t ? " active" : ""}`} onClick={() => { setTab(t); setViewingHistory(null); }}>{label}</button>
+          ))}
+        </div>
         <div className="topnav-spacer" />
         <div className="topnav-user">
           <div className="topnav-avatar">{user.initials}</div>
@@ -1517,9 +1610,45 @@ ${proposal.payoff ? `<div class="section">
         </div>
       </nav>
 
+      {/* MOBILE BOTTOM TAB BAR */}
+      <nav className="mobile-bottom-nav">
+        {[
+          ["generator", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          ), "Genera"],
+          ["catalog", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          ), "Prodotti"],
+          ["history", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          ), "Storico"],
+          ["dashboard", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+            </svg>
+          ), "Dashboard"],
+          ["profile", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          ), "Profilo"],
+        ].map(([t, icon, label]) => (
+          <button key={t} className={tab === t ? "active" : ""} onClick={() => { setTab(t); setViewingHistory(null); }}>
+            <span className="tab-icon">{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
       {/* CANCELLATION BANNER — visibile se abbonamento in disdetta */}
       {user?.cancelAtPeriodEnd && user?.cancelAt && (
-        <div style={{ background:"#fff3e0", borderBottom:"1px solid rgba(230,81,0,0.3)", padding:"8px 2rem", display:"flex", alignItems:"center", gap:10, fontSize:11, color:"#e65100" }}>
+        <div className="cancellation-banner" style={{ background:"#fff3e0", borderBottom:"1px solid rgba(230,81,0,0.3)", padding:"8px 2rem", display:"flex", alignItems:"center", gap:10, fontSize:11, color:"#e65100" }}>
           <span style={{ fontSize:14, flexShrink:0 }}>⚠️</span>
           <span>
             Il tuo abbonamento <strong>Retail</strong> è stato disdetto e scadrà il <strong>{new Date(user.cancelAt).toLocaleDateString("it-IT")}</strong>. Dopo quella data passerai automaticamente al piano Free.
@@ -1543,13 +1672,17 @@ ${proposal.payoff ? `<div class="section">
       )}
 
       {/* DISCLAIMER BANNER — sempre visibile nell'app */}
-      <div style={{ background:"#fffbeb", borderBottom:"1px solid rgba(184,148,42,0.35)", padding:"8px 2rem", display:"flex", alignItems:"flex-start", gap:10, fontSize:10, color:"#7a5c10", lineHeight:1.6 }}>
+      <div className="disclaimer-banner" style={{ background:"#fffbeb", borderBottom:"1px solid rgba(184,148,42,0.35)", padding:"8px 2rem", display:"flex", alignItems:"flex-start", gap:10, fontSize:10, color:"#7a5c10", lineHeight:1.6 }}>
         <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>⚠️</span>
         <span>
           <strong>AVVERTENZE LEGALI (MiFID II / PRIIPs):</strong> Le proposte generate sono esclusivamente a uso dell'intermediario abilitato destinatario e <strong>non costituiscono consulenza finanziaria, offerta o sollecitazione all'investimento</strong> ai sensi del D.Lgs. 58/1998 e della Direttiva 2014/65/UE. I prodotti strutturati comportano rischio di perdita parziale o totale del capitale. Verificare sempre l'adeguatezza del cliente e consegnare la documentazione KID/PRIIPs prima di qualsiasi operazione. Dati e scenari indicativi, non vincolanti.
         </span>
       </div>
 
+      <div className="disclaimer-banner-mobile" style={{ display:"none", background:"#fffbeb", borderBottom:"1px solid rgba(184,148,42,0.35)", padding:"7px 1rem", alignItems:"center", gap:8, fontSize:10, color:"#7a5c10" }}>
+        <span style={{ flexShrink:0 }}>⚠️</span>
+        <span>Contenuti a uso esclusivo dell'intermediario. Non costituiscono consulenza finanziaria.</span>
+      </div>
       <div className="main">
 
         {/* DASHBOARD */}
@@ -2016,7 +2149,20 @@ ${proposal.payoff ? `<div class="section">
               </div>
             )}
 
-            <div className="gen-layout">
+            {/* Mobile panel toggle */}
+            <div className="gen-mobile-toggle">
+              <button className={mobileGenPanel === "form" ? "active" : ""} onClick={() => setMobileGenPanel("form")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Configura
+              </button>
+              <button className={mobileGenPanel === "output" ? "active" : ""} onClick={() => setMobileGenPanel("output")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Proposte
+                {proposals.length > 0 && <span className="gen-mobile-toggle-badge">{proposals.length}</span>}
+              </button>
+            </div>
+
+            <div className="gen-layout" data-mobile-panel={mobileGenPanel}>
               <div className="gen-form">
                 <h3>Profilo Investitore</h3>
 
