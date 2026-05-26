@@ -82,7 +82,7 @@ const PLANS = [
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
-    priceId: "price_1TbRXCQk0TtLIDLRAIVkTBeo",
+    priceId: "price_1TbRXCQk0TtLlDLRAIVkTBeo",
     priceIdAnnual: "price_1TbRXiQk0TtLIDLRuRYpb1ho",
   },
   {
@@ -2604,3 +2604,4 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
