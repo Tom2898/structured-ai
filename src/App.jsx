@@ -82,8 +82,8 @@ const PLANS = [
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
-    priceId: "price_1TbRXCQk0TtLlDLRAIVkTBeo",
-    priceIdAnnual: "price_1TbRXiQk0TtLIDLRuRYpb1ho",
+    priceId: "price_1TbRmrQk0TtLlDLRPYoHLzUX",
+    priceIdAnnual: "price_1TbRnAQk0TtLlDLRjCoUROqK",
   },
   {
     id: "pro-retail",
@@ -1926,7 +1926,7 @@ ${proposal.payoff ? `<div class="section">
                         const res = await fetch("/api/switch-to-annual", {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          body: JSON.stringify({ priceIdAnnual: "price_1TbRXiQk0TtLIDLRuRYpb1ho" })
+                          body: JSON.stringify({ priceIdAnnual: "price_1TbRnAQk0TtLlDLRjCoUROqK" })
                         });
                         const data = await res.json();
                         if (data.success) {
@@ -2604,4 +2604,5 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
 
