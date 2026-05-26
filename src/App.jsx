@@ -1016,6 +1016,7 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
       }
 
       // Sessione attiva subito (email confirmation disabilitata in Supabase)
+      try { const token = data.session?.access_token; if (token) { fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }, body: JSON.stringify({ name: authName, plan: authPlan }) }); } } catch (_) {}
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
       if (authPlan === 'retail') {
@@ -2612,4 +2613,6 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
+
 
