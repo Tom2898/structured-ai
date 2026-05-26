@@ -1,9 +1,9 @@
-import Stripe from 'stripe';
+﻿import Stripe from 'stripe';
 
 // Whitelist of valid price IDs — prevents passing arbitrary Stripe prices
 const ALLOWED_PRICE_IDS = new Set([
-  'price_1TYZBRHcctqaGDVzptl5Nuxf', // Retail mensile
-  'price_1TahpuHcctqaGDVzW2q6nztf', // Retail annuale
+  'price_1TbRXCQk0TtLIDLRAIVkTBeo', // Retail mensile
+  'price_1TbRXiQk0TtLIDLRuRYpb1ho', // Retail annuale
 ]);
 
 export default async function handler(req, res) {
