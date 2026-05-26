@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from './lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1008,6 +1008,14 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
         options: { data: { name: authName, plan: authPlan } }
       });
       if (error) { setAuthError(error.message); return; }
+
+      // Se data.session è null, Supabase ha inviato la mail di conferma e aspetta il click
+      if (!data.session) {
+        setAuthError("✉️ Controlla la tua email e clicca il link di conferma per attivare l'account.");
+        return;
+      }
+
+      // Sessione attiva subito (email confirmation disabilitata in Supabase)
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
       if (authPlan === 'retail') {
@@ -2604,5 +2612,4 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
-
 
