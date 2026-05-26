@@ -22,8 +22,8 @@ async function buffer(readable) {
 const PLAN_LABELS = { free: 'Free', retail: 'Retail', pro: 'Pro', unlimited: 'Unlimited' };
 const PLAN_PRICES = { free: '€0/mese', retail: '€19.90/mese', pro: '€49/mese', unlimited: '€199/mese' };
 const PLAN_FEATURES = {
-  retail: ['50 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF', 'Ricerca ISIN Euronext reali'],
-  pro:    ['100 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF con brand', 'Storico proposte', 'Ricerca ISIN Euronext', 'Confronto affiancato'],
+  retail: ['100 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF', 'Ricerca ISIN Euronext reali'],
+  pro:    ['500 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF con brand', 'Storico proposte', 'Ricerca ISIN Euronext', 'Confronto affiancato'],
   free:   ['3 proposte/mese', 'Accesso base ai prodotti'],
 };
 
@@ -92,10 +92,12 @@ function welcomeEmail(email, plan) {
 
     <div style="background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
       <div style="font-size:10px;color:#7a8c7e;letter-spacing:0.1em;margin-bottom:8px;">PIANO ATTIVO</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:20px;font-weight:500;color:#1a3a2a;">${planLabel}</span>
-        <span style="font-size:13px;color:#4a7a5a;font-weight:500;">${planPrice}</span>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:0;">
+        <tr>
+          <td style="font-size:20px;font-weight:500;color:#1a3a2a;">${planLabel}</td>
+          <td align="right" style="font-size:13px;color:#4a7a5a;font-weight:500;">${planPrice}</td>
+        </tr>
+      </table>
       ${plan !== 'free' ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">${featuresHtml(plan)}</table>` : ''}
     </div>
 
@@ -133,18 +135,20 @@ function planChangeEmail(email, oldPlan, newPlan) {
       </div>
     </div>
 
-    <div style="display:flex;gap:12px;margin-bottom:28px;justify-content:center;align-items:center;">
-      <div style="flex:1;background:#f5f4ef;border:1px solid #e0ddd4;border-radius:10px;padding:16px;text-align:center;">
-        <div style="font-size:10px;color:#a0a89e;letter-spacing:0.1em;margin-bottom:6px;">PRECEDENTE</div>
-        <div style="font-size:16px;color:#7a8c7e;font-weight:500;text-decoration:line-through;">${oldLabel}</div>
-      </div>
-      <div style="font-size:20px;color:#c8d5b9;">→</div>
-      <div style="flex:1;background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:16px;text-align:center;">
-        <div style="font-size:10px;color:#4a7a5a;letter-spacing:0.1em;margin-bottom:6px;">NUOVO</div>
-        <div style="font-size:16px;color:#1a3a2a;font-weight:500;">${newLabel}</div>
-        <div style="font-size:11px;color:#4a7a5a;margin-top:2px;">${newPrice}</div>
-      </div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      <tr>
+        <td width="45%" style="background:#f5f4ef;border:1px solid #e0ddd4;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:10px;color:#a0a89e;letter-spacing:0.1em;margin-bottom:6px;">PRECEDENTE</div>
+          <div style="font-size:16px;color:#7a8c7e;font-weight:500;text-decoration:line-through;">${oldLabel}</div>
+        </td>
+        <td width="10%" align="center" style="font-size:20px;color:#c8d5b9;">→</td>
+        <td width="45%" style="background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:10px;color:#4a7a5a;letter-spacing:0.1em;margin-bottom:6px;">NUOVO</div>
+          <div style="font-size:16px;color:#1a3a2a;font-weight:500;">${newLabel}</div>
+          <div style="font-size:11px;color:#4a7a5a;margin-top:2px;">${newPrice}</div>
+        </td>
+      </tr>
+    </table>
 
     ${newPlan !== 'free' ? `
     <div style="background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
@@ -170,70 +174,6 @@ function planChangeEmail(email, oldPlan, newPlan) {
   };
 }
 
-
-function switchToAnnualEmail(email) {
-  const appUrl = process.env.VITE_APP_URL || 'https://structured-ai-l4gg.vercel.app';
-  const bodyHtml = `
-    <div style="text-align:center;margin-bottom:28px;">
-      <div style="font-size:40px;margin-bottom:16px;">🗓️</div>
-      <div style="font-family:Georgia,serif;font-size:26px;font-weight:300;color:#1a3a2a;line-height:1.2;margin-bottom:12px;">Sei passato al piano annuale</div>
-      <div style="font-size:13px;color:#7a8c7e;line-height:1.6;">Il tuo abbonamento Retail è ora fatturato annualmente.</div>
-    </div>
-    <div style="background:#f5f9f2;border:1px solid #c8dfc0;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
-      <div style="font-size:10px;color:#7a8c7e;letter-spacing:0.1em;margin-bottom:10px;">RIEPILOGO</div>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;border-bottom:1px solid #f0ede6;">✓ &nbsp;€17.90/mese (€214.80/anno)</td></tr>
-        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;border-bottom:1px solid #f0ede6;">✓ &nbsp;Risparmio di €24 rispetto al mensile</td></tr>
-        <tr><td style="padding:6px 0;font-size:12px;color:#3a5a3a;">✓ &nbsp;La differenza pro-rata è già stata addebitata</td></tr>
-      </table>
-    </div>
-    <div style="text-align:center;margin-bottom:28px;">
-      <a href="${appUrl}" style="display:inline-block;background:#1a3a2a;color:#f5f4ef;font-size:13px;font-weight:500;letter-spacing:0.04em;text-decoration:none;padding:14px 36px;border-radius:8px;">Vai alla piattaforma →</a>
-    </div>
-    <div style="height:1px;background:#e8e5dc;margin-bottom:20px;"></div>
-    <div style="font-size:11px;color:#a0a89e;text-align:center;line-height:1.6;">
-      Se non hai richiesto questa modifica, contatta <a href="mailto:structuredai@proton.me" style="color:#7a8c7e;">structuredai@proton.me</a>
-    </div>`;
-  return {
-    subject: 'Abbonamento Retail aggiornato al piano annuale',
-    html: emailShell({ title: 'Piano annuale attivo', preheader: 'Ora risparmi €24/anno con il piano annuale.', bodyHtml }),
-  };
-}
-
-function paymentFailedEmail(email, isLastAttempt = false) {
-  const appUrl = process.env.VITE_APP_URL || 'https://structured-ai-l4gg.vercel.app';
-  const bodyHtml = `
-    <div style="text-align:center;margin-bottom:28px;">
-      <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
-      <div style="font-family:Georgia,serif;font-size:26px;font-weight:300;color:#1a3a2a;line-height:1.2;margin-bottom:12px;">
-        ${isLastAttempt ? 'Abbonamento sospeso' : 'Pagamento non riuscito'}
-      </div>
-      <div style="font-size:13px;color:#7a8c7e;line-height:1.6;">
-        ${isLastAttempt
-          ? 'Tutti i tentativi di pagamento sono falliti. Il tuo account è stato declassato al piano Free.'
-          : 'Non è stato possibile addebitare il rinnovo del tuo abbonamento Retail. Stripe riproverà automaticamente nei prossimi giorni.'}
-      </div>
-    </div>
-    <div style="background:#fff8f0;border:1px solid #fcd9a0;border-radius:10px;padding:20px 24px;margin-bottom:28px;font-size:12px;color:#7a5a20;line-height:1.7;">
-      ${isLastAttempt
-        ? "Aggiorna il metodo di pagamento e rinnova l'abbonamento per ripristinare l'accesso completo."
-        : 'Verifica che il metodo di pagamento associato al tuo account sia valido e abbia fondi sufficienti. Se il problema persiste, aggiornalo prima del prossimo tentativo.'}
-    </div>
-    <div style="text-align:center;margin-bottom:28px;">
-      <a href="${appUrl}" style="display:inline-block;background:#1a3a2a;color:#f5f4ef;font-size:13px;font-weight:500;letter-spacing:0.04em;text-decoration:none;padding:14px 36px;border-radius:8px;">
-        ${isLastAttempt ? 'Rinnova abbonamento \u2192' : 'Aggiorna metodo di pagamento \u2192'}
-      </a>
-    </div>
-    <div style="height:1px;background:#e8e5dc;margin-bottom:20px;"></div>
-    <div style="font-size:11px;color:#a0a89e;text-align:center;line-height:1.6;">
-      Per assistenza scrivi a <a href="mailto:structuredai@proton.me" style="color:#7a8c7e;">structuredai@proton.me</a>
-    </div>`;
-  return {
-    subject: isLastAttempt ? 'Abbonamento sospeso \u2014 pagamento fallito' : 'Pagamento non riuscito \u2014 StructuredAI',
-    html: emailShell({ title: 'Problema di pagamento', preheader: isLastAttempt ? 'Il tuo account è stato declassato a Free.' : 'Verifica il tuo metodo di pagamento.', bodyHtml }),
-  };
-}
-
 async function sendEmail(to, { subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -242,7 +182,7 @@ async function sendEmail(to, { subject, html }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'StructuredAI <onboarding@resend.dev>',
+      from: 'StructuredAI <noreply@structuredai.live>',
       to,
       subject,
       html,
@@ -277,12 +217,14 @@ export default async function handler(req, res) {
     const subscriptionId = session.subscription;
     const customerId = session.customer;
 
-    // Fetch subscription to get billing interval
+    // Retrieve subscription to get billing interval
     let billingInterval = 'month';
     try {
-      const sub = await stripe.subscriptions.retrieve(subscriptionId);
-      billingInterval = sub.items.data[0]?.plan?.interval || 'month';
-    } catch(e) { console.error('Sub fetch error:', e.message); }
+      if (subscriptionId) {
+        const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+        billingInterval = stripeSub.items.data[0]?.plan?.interval || 'month';
+      }
+    } catch(e) { console.error('Subscription fetch error:', e.message); }
 
     const { error } = await supabase.from('subscriptions').upsert({
       email,
@@ -327,13 +269,9 @@ export default async function handler(req, res) {
 
     // Se status è active ma cancel_at_period_end è true → l'utente ha disdetto
     // Il piano rimane attivo fino a cancel_at, ma lo segnaliamo nel DB
-    const newPlan = (status === 'active' || status === 'past_due') ? 'retail' : 'free';
+    const newPlan = status === 'active' ? 'retail' : 'free';
     const previousCancelAtPeriodEnd = subscription.previous_attributes?.cancel_at_period_end;
     const previousStatus = subscription.previous_attributes?.status;
-
-    // Detect billing interval from subscription items
-    const interval = subscription.items?.data?.[0]?.plan?.interval || 'month';
-    const previousInterval = subscription.previous_attributes?.items?.data?.[0]?.plan?.interval;
 
     await supabase.from('subscriptions')
       .update({
@@ -341,23 +279,12 @@ export default async function handler(req, res) {
         status,
         cancel_at_period_end: cancelAtPeriodEnd,
         cancel_at: cancelAt ? new Date(cancelAt * 1000).toISOString() : null,
-        billing_interval: interval,
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', subscription.id);
 
-    // Send email if user just switched from monthly to annual
-    if (interval === 'year' && previousInterval === 'month') {
-      let email = null;
-      try {
-        const customer = await stripe.customers.retrieve(subscription.customer);
-        email = customer.email;
-      } catch(e) { console.error('Customer fetch error:', e.message); }
-      if (email) await sendEmail(email, switchToAnnualEmail(email));
-    }
-
     // Invia email se l'utente ha appena disdetto (cancel_at_period_end è diventato true)
-    if (cancelAtPeriodEnd && !previousCancelAtPeriodEnd) {
+    if (cancelAtPeriodEnd && previousCancelAtPeriodEnd === false) {
       let email = null;
       try {
         const customer = await stripe.customers.retrieve(subscription.customer);
@@ -386,29 +313,10 @@ export default async function handler(req, res) {
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object;
     const subscriptionId = invoice.subscription;
-
     if (subscriptionId) {
-      // Retrieve subscription to check attempt count
-      let attemptCount = invoice.attempt_count || 1;
-      let maxAttempts = 4; // Stripe default
-      const isLastAttempt = attemptCount >= maxAttempts;
-
       await supabase.from('subscriptions')
-        .update({
-          status: isLastAttempt ? 'canceled' : 'past_due',
-          plan: isLastAttempt ? 'free' : 'retail',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'past_due', updated_at: new Date().toISOString() })
         .eq('stripe_subscription_id', subscriptionId);
-
-      // Send email warning
-      let email = null;
-      try {
-        const customer = await stripe.customers.retrieve(invoice.customer);
-        email = customer.email;
-      } catch(e) { console.error('Customer fetch error:', e.message); }
-
-      if (email) await sendEmail(email, paymentFailedEmail(email, isLastAttempt));
     }
   }
 
