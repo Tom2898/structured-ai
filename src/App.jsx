@@ -1483,7 +1483,7 @@ ${proposal.payoff ? `<div class="section">
             <div className="logo-name">StructuredAI</div>
           </div>
           <div className="landing-nav-actions">
-            <button className="btn-ghost" onClick={() => setScreen("landing")}>← Indietro</button>
+            <button className="btn-ghost" onClick={() => setScreen(user ? "app" : "landing")}>← Indietro</button>
           </div>
         </nav>
         <div style={{ maxWidth: 680, margin: "0 auto", padding: "4rem 2rem" }}>
@@ -1670,6 +1670,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
+          <button className="logout-btn" onClick={() => setScreen("support")} style={{ marginRight: 4 }}>Support</button>
           <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
