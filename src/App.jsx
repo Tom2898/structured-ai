@@ -304,8 +304,6 @@ const css = `
   .profile-usage-fill.full { background: #c62828; }
   .profile-upgrade-btn { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; margin-top: 1rem; transition: opacity 0.15s; }
   .profile-upgrade-btn:hover { opacity: 0.85; }
-  .profile-danger-btn { width: 100%; padding: 10px; background: none; color: #c62828; border: 1px solid #c62828; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; }
-  .profile-danger-btn:hover { background: #fff5f5; }
   .profile-cancel-btn { width: 100%; padding: 10px; background: none; color: #e65100; border: 1px solid #e65100; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; margin-bottom: 8px; }
   .profile-cancel-btn:hover { background: #fff8f5; }
   .profile-cancel-confirm { background: var(--surface); border: 1px solid #e65100; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 8px; }
@@ -314,6 +312,8 @@ const css = `
   .profile-cancel-confirm-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; font-family: 'DM Mono', monospace; }
   .profile-cancel-yes { background: #c62828; color: #fff; border: none; }
   .profile-cancel-yes:hover { opacity: 0.85; }
+  .profile-danger-btn { width: 100%; padding: 10px; background: none; color: #c62828; border: 1px solid #c62828; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; }
+  .profile-danger-btn:hover { background: #fff5f5; }
   .profile-cancel-no { background: none; border: 1px solid var(--border-md); color: var(--muted); }
   .profile-cancel-no:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -923,9 +923,6 @@ export default function App() {
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
   const [switchAnnualMsg, setSwitchAnnualMsg] = useState("");
   const [cancelMsg, setCancelMsg] = useState("");
-  const [deleteStep, setDeleteStep] = useState(0); // 0=hidden, 1=warn, 2=confirm-email, 3=loading, 4=done
-  const [deleteEmailInput, setDeleteEmailInput] = useState("");
-  const [deleteError, setDeleteError] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
   const [horizon, setHorizon] = useState("");
@@ -2031,105 +2028,6 @@ ${proposal.payoff ? `<div class="section">
                 </button>
               </div>
 
-              {/* DELETE ACCOUNT */}
-              <div className="profile-card" style={{ borderColor: deleteStep >= 1 ? "rgba(198,40,40,0.3)" : "var(--border)" }}>
-                <div className="profile-card-title" style={{ color: deleteStep >= 1 ? "#c62828" : undefined }}>Elimina account</div>
-
-                {deleteStep === 0 && (
-                  <div>
-                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14, lineHeight:1.7 }}>
-                      Elimina permanentemente il tuo account, tutti i dati e cancella l'abbonamento attivo su Stripe. <strong>Questa azione è irreversibile.</strong>
-                    </div>
-                    <button className="profile-danger-btn" style={{ borderColor:"#c62828", color:"#c62828" }} onClick={() => { setDeleteStep(1); setDeleteError(""); }}>
-                      Elimina account →
-                    </button>
-                  </div>
-                )}
-
-                {deleteStep === 1 && (
-                  <div>
-                    <div style={{ background:"#fff5f5", border:"1px solid rgba(198,40,40,0.25)", borderRadius:"var(--radius-sm)", padding:"14px 16px", marginBottom:16 }}>
-                      <div style={{ fontSize:13, fontWeight:500, color:"#c62828", marginBottom:8 }}>⚠️ Attenzione — azione irreversibile</div>
-                      <ul style={{ fontSize:12, color:"#7a2020", lineHeight:2, paddingLeft:16 }}>
-                        <li>Il tuo abbonamento Retail verrà <strong>cancellato immediatamente su Stripe</strong></li>
-                        <li>Non riceverai rimborsi per il periodo rimanente</li>
-                        <li>Tutti i tuoi dati e lo storico proposte verranno eliminati</li>
-                        <li>Non potrai recuperare l'account una volta eliminato</li>
-                      </ul>
-                    </div>
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button className="profile-danger-btn" style={{ flex:1, borderColor:"#c62828", color:"#c62828" }} onClick={() => { setDeleteStep(2); setDeleteError(""); }}>
-                        Sì, voglio eliminare l'account
-                      </button>
-                      <button className="profile-cancel-no" style={{ flex:1 }} onClick={() => setDeleteStep(0)}>Annulla</button>
-                    </div>
-                  </div>
-                )}
-
-                {deleteStep === 2 && (
-                  <div>
-                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12, lineHeight:1.7 }}>
-                      Per confermare, inserisci il tuo indirizzo email: <strong>{user.email}</strong>
-                    </div>
-                    <input
-                      style={{ width:"100%", padding:"10px 12px", border:`1px solid ${deleteError ? "#c62828" : "var(--border-md)"}`, borderRadius:"var(--radius-sm)", fontFamily:"'DM Mono', monospace", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", marginBottom:10, boxSizing:"border-box" }}
-                      placeholder="inserisci la tua email..."
-                      value={deleteEmailInput}
-                      onChange={e => { setDeleteEmailInput(e.target.value); setDeleteError(""); }}
-                    />
-                    {deleteError && <div style={{ fontSize:11, color:"#c62828", marginBottom:10 }}>{deleteError}</div>}
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button
-                        style={{ flex:1, padding:10, background:"#c62828", color:"#fff", border:"none", borderRadius:"var(--radius-sm)", fontSize:12, cursor:"pointer", fontFamily:"'DM Mono', monospace", opacity: deleteEmailInput === user.email ? 1 : 0.4 }}
-                        disabled={deleteEmailInput !== user.email}
-                        onClick={async () => {
-                          if (deleteEmailInput !== user.email) { setDeleteError("Email non corretta."); return; }
-                          setDeleteStep(3);
-                          setDeleteError("");
-                          try {
-                            const { data: { session: s } } = await supabase.auth.getSession();
-                            const res = await fetch("/api/delete-account", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              setDeleteStep(4);
-                              setTimeout(async () => {
-                                await supabase.auth.signOut();
-                                setUser(null);
-                                setHistory([]);
-                                setScreen("landing");
-                              }, 2500);
-                            } else {
-                              setDeleteError("Errore: " + (data.error || "riprova."));
-                              setDeleteStep(2);
-                            }
-                          } catch(e) {
-                            setDeleteError("Errore di connessione: " + e.message);
-                            setDeleteStep(2);
-                          }
-                        }}>
-                        Elimina definitivamente
-                      </button>
-                      <button className="profile-cancel-no" style={{ flex:1 }} onClick={() => { setDeleteStep(0); setDeleteEmailInput(""); setDeleteError(""); }}>Annulla</button>
-                    </div>
-                  </div>
-                )}
-
-                {deleteStep === 3 && (
-                  <div style={{ textAlign:"center", padding:"1rem 0", fontSize:12, color:"var(--muted)" }}>
-                    ⏳ Eliminazione in corso...
-                  </div>
-                )}
-
-                {deleteStep === 4 && (
-                  <div style={{ textAlign:"center", padding:"1rem 0" }}>
-                    <div style={{ fontSize:20, marginBottom:8 }}>✓</div>
-                    <div style={{ fontSize:13, color:"var(--accent)" }}>Account eliminato. Reindirizzamento...</div>
-                  </div>
-                )}
-              </div>
             </div>
           );
         })()}
@@ -2613,6 +2511,4 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
-
-
 
