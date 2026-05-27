@@ -129,7 +129,7 @@ export default async function handler(req, res) {
 
   try {
     await resend.emails.send({
-      from: 'StructuredAI <onboarding@resend.dev>',
+      from: 'StructuredAI <support@structuredai.live>',
       to: email,
       subject: `Benvenuto su StructuredAI — Piano ${planLabel}`,
       html,
