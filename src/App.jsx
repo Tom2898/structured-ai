@@ -1463,8 +1463,66 @@ ${proposal.payoff ? `<div class="section">
               I dati, i termini e gli scenari di payoff generati sono puramente indicativi e non vincolanti. I codici ISIN eventualmente suggeriti derivano da ricerche automatizzate su mercati regolamentati e devono essere verificati sulle fonti ufficiali (Euronext Markets, Borsa Italiana, CONSOB) prima di qualsiasi utilizzo. StructuredAI non garantisce l'accuratezza, la completezza o l'aggiornamento delle informazioni fornite.
             </div>
             <div>
-              © 2025 StructuredAI · Tutti i diritti riservati · <span style={{ opacity: 0.7 }}>P.IVA [da inserire] · Sede legale: [da inserire] · Non autorizzato alla prestazione di servizi di investimento</span>
+              © 2025 StructuredAI · Tutti i diritti riservati · <span style={{ opacity: 0.7 }}>P.IVA [da inserire] · Sede legale: [da inserire] · Non autorizzato alla prestazione di servizi di investimento</span> · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("support")}>Support</span>
             </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+
+  // ── SUPPORT ───────────────────────────────────────────────────────────────
+  if (screen === "support") return (
+    <>
+      <style>{css}</style>
+      <div className="landing">
+        <nav className="landing-nav">
+          <div className="landing-logo" style={{ cursor: "pointer" }} onClick={() => setScreen("landing")}>
+            <div className="logo-mark">S</div>
+            <div className="logo-name">StructuredAI</div>
+          </div>
+          <div className="landing-nav-actions">
+            <button className="btn-ghost" onClick={() => setScreen("landing")}>← Indietro</button>
+          </div>
+        </nav>
+        <div style={{ maxWidth: 680, margin: "0 auto", padding: "4rem 2rem" }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--accent)", marginBottom: "1rem" }}>SUPPORTO</div>
+          <h1 style={{ fontFamily: "var(--font-serif)", fontWeight: 300, fontSize: "2.2rem", marginBottom: "0.5rem", lineHeight: 1.3 }}>Come possiamo <em>aiutarti?</em></h1>
+          <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.8, marginBottom: "3rem" }}>
+            Per qualsiasi domanda tecnica, problema con l'account o richiesta commerciale, scrivici direttamente.
+          </p>
+
+          <div style={{ display: "grid", gap: "1.5rem", marginBottom: "3rem" }}>
+            <div style={{ background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.75rem 2rem" }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "var(--muted)", marginBottom: "0.5rem" }}>EMAIL</div>
+              <a href="mailto:support@structuredai.live" style={{ fontSize: 18, color: "var(--accent)", textDecoration: "none", fontFamily: "var(--font-serif)", fontWeight: 300 }}>
+                support@structuredai.live
+              </a>
+              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: "0.75rem", lineHeight: 1.7 }}>
+                Risposta entro 24 ore nei giorni lavorativi.
+              </p>
+            </div>
+
+            <div style={{ background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.75rem 2rem" }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "var(--muted)", marginBottom: "1rem" }}>FAQ</div>
+              {[
+                { q: "Come faccio il reset della password?", a: "Vai alla schermata di accesso e clicca su "Password dimenticata". Riceverai un'email con il link di reset." },
+                { q: "Come faccio l'upgrade al piano Retail?", a: "Dal menu del profilo (icona in alto a destra) trovi la sezione Piano. Clicca su Upgrade e verrai reindirizzato a Stripe." },
+                { q: "Posso cancellare il mio abbonamento?", a: "Sì, puoi cancellare in qualsiasi momento dal profilo. L'abbonamento rimane attivo fino alla fine del periodo pagato." },
+                { q: "I codici ISIN sono aggiornati in tempo reale?", a: "I codici ISIN derivano da ricerche su Euronext Markets. Ti consigliamo sempre di verificare sulla fonte ufficiale prima dell'utilizzo." },
+              ].map(({ q, a }, i) => (
+                <div key={i} style={{ borderTop: i > 0 ? "1px solid var(--border)" : "none", paddingTop: i > 0 ? "1rem" : 0, marginTop: i > 0 ? "1rem" : 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: "0.4rem" }}>{q}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.7 }}>{a}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="landing-footer">
+          <div style={{ maxWidth: 860, margin: "0 auto" }}>
+            © 2025 StructuredAI · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("landing")}>Home</span>
           </div>
         </div>
       </div>
@@ -2192,6 +2250,12 @@ ${proposal.payoff ? `<div class="section">
                   </div>
                 )}
 
+                {!loading && proposals.length > 0 && (
+                  <div style={{ display:"flex", gap:8, alignItems:"flex-start", background:"#fffbf0", border:"1px solid rgba(180,130,0,0.25)", borderRadius:"var(--radius-sm)", padding:"10px 14px", fontSize:11, color:"#7a5c00", lineHeight:1.6 }}>
+                    <span style={{ fontSize:14, flexShrink:0 }}>⚠️</span>
+                    <span><strong>Dati indicativi.</strong> Termini, cedole, barriere e scenari di payoff sono generati dall'AI a scopo illustrativo e non costituiscono offerta, consulenza finanziaria né prezzi reali. Verificare sempre le condizioni aggiornate presso l'emittente prima di qualsiasi utilizzo.</span>
+                  </div>
+                )}
                 {!loading && proposals.map((p, i) => (
                   p.error
                     ? <div key={i} style={{ padding:"1rem", background:"#fce4ec", borderRadius:"var(--radius)", fontSize:12, color:"#c62828" }}>{p.message}</div>
@@ -2511,4 +2575,3 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
-
