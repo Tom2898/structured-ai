@@ -1507,7 +1507,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.75rem 2rem" }}>
               <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "var(--muted)", marginBottom: "1rem" }}>FAQ</div>
               {[
-                { q: "Come faccio il reset della password?", a: "Vai alla schermata di accesso e clicca su "Password dimenticata". Riceverai un'email con il link di reset." },
+                { q: "Come faccio il reset della password?", a: "Vai alla schermata di accesso e clicca su 'Password dimenticata'. Riceverai un'email con il link di reset." },
                 { q: "Come faccio l'upgrade al piano Retail?", a: "Dal menu del profilo (icona in alto a destra) trovi la sezione Piano. Clicca su Upgrade e verrai reindirizzato a Stripe." },
                 { q: "Posso cancellare il mio abbonamento?", a: "Sì, puoi cancellare in qualsiasi momento dal profilo. L'abbonamento rimane attivo fino alla fine del periodo pagato." },
                 { q: "I codici ISIN sono aggiornati in tempo reale?", a: "I codici ISIN derivano da ricerche su Euronext Markets. Ti consigliamo sempre di verificare sulla fonte ufficiale prima dell'utilizzo." },
@@ -2250,12 +2250,6 @@ ${proposal.payoff ? `<div class="section">
                   </div>
                 )}
 
-                {!loading && proposals.length > 0 && (
-                  <div style={{ display:"flex", gap:8, alignItems:"flex-start", background:"#fffbf0", border:"1px solid rgba(180,130,0,0.25)", borderRadius:"var(--radius-sm)", padding:"10px 14px", fontSize:11, color:"#7a5c00", lineHeight:1.6 }}>
-                    <span style={{ fontSize:14, flexShrink:0 }}>⚠️</span>
-                    <span><strong>Dati indicativi.</strong> Termini, cedole, barriere e scenari di payoff sono generati dall'AI a scopo illustrativo e non costituiscono offerta, consulenza finanziaria né prezzi reali. Verificare sempre le condizioni aggiornate presso l'emittente prima di qualsiasi utilizzo.</span>
-                  </div>
-                )}
                 {!loading && proposals.map((p, i) => (
                   p.error
                     ? <div key={i} style={{ padding:"1rem", background:"#fce4ec", borderRadius:"var(--radius)", fontSize:12, color:"#c62828" }}>{p.message}</div>
