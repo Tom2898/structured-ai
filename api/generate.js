@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('plan, status, usage_count, usage_reset_at')
-      .eq('email', email)
+      .eq('user_id', authUser.id)
       .single();
 
     const plan = sub?.plan || 'free';
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
         ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
         : sub.usage_reset_at,
       updated_at: now.toISOString()
-    }).eq('email', email);
+    }).eq('user_id', authUser.id);
   }
 
   // ── 4. ISIN search: only allowed for retail/pro ───────────────────────────────
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('plan, status')
-      .eq('email', email)
+      .eq('user_id', authUser.id)
       .single();
 
     const plan = sub?.plan || 'free';
