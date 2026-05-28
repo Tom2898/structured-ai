@@ -952,6 +952,7 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [tab, setTab] = useState("generator");
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [viewingHistory, setViewingHistory] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
   const [switchAnnualMsg, setSwitchAnnualMsg] = useState("");
@@ -1937,7 +1938,7 @@ ${proposal.payoff ? `<div class="section">
                         const res = await fetch("/api/switch-to-annual", {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          body: JSON.stringify({ priceIdAnnual: "price_1TbRnAQk0TtLlDLRjCoUROqK" })
+                          body: JSON.stringify({ priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho" })
                         });
                         const data = await res.json();
                         if (data.success) {
