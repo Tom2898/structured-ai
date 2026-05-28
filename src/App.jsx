@@ -800,6 +800,52 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authPlan, setAuthPlan] = useState("free");
   const [authBillingAnnual, setAuthBillingAnnual] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileWidgetId = React.useRef(null);
+
+  // Load Cloudflare Turnstile script once
+  React.useEffect(() => {
+    if (document.getElementById("cf-turnstile-script")) return;
+    const script = document.createElement("script");
+    script.id = "cf-turnstile-script";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Render invisible Turnstile widget when auth screen is shown
+  React.useEffect(() => {
+    if (screen !== "auth") return;
+    // Reset token on each visit to auth screen
+    setTurnstileToken(null);
+
+    function tryRender() {
+      if (!window.turnstile) { setTimeout(tryRender, 150); return; }
+      const container = document.getElementById("turnstile-container");
+      if (!container) { setTimeout(tryRender, 150); return; }
+      // Remove previous widget if any
+      if (turnstileWidgetId.current !== null) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch (_) {}
+        turnstileWidgetId.current = null;
+      }
+      turnstileWidgetId.current = window.turnstile.render(container, {
+        sitekey: "0x4AAAAAADYB_wseccdR0lZP",
+        size: "invisible",
+        callback: (token) => { setTurnstileToken(token); },
+        "expired-callback": () => { setTurnstileToken(null); },
+        "error-callback": () => { setTurnstileToken(null); },
+      });
+    }
+    tryRender();
+
+    return () => {
+      if (turnstileWidgetId.current !== null && window.turnstile) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch (_) {}
+        turnstileWidgetId.current = null;
+      }
+    };
+  }, [screen]);
 
   // Helper: build user object reading plan from subscriptions table (source of truth)
   async function buildUserFromSession(sessionUser, { waitForActive = false } = {}) {
@@ -990,6 +1036,15 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
     if (authMode === "signup" && !authName) { setAuthError("Inserisci il tuo nome."); return; }
     if (authPassword.length < 6) { setAuthError("La password deve essere di almeno 6 caratteri."); return; }
 
+    // Turnstile: esegui la challenge se il token non è ancora pronto
+    if (!turnstileToken) {
+      if (turnstileWidgetId.current !== null && window.turnstile) {
+        try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
+      }
+      setAuthError("Verifica di sicurezza in corso. Riprova tra un istante.");
+      return;
+    }
+
     if (authMode === "signup") {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail,
@@ -1160,7 +1215,7 @@ Reply ONLY with this JSON (no text outside):
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "x-turnstile-token": turnstileToken || "" },
         body: JSON.stringify({ prompt })
       });
       if (res.status === 429) {
@@ -1234,7 +1289,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       const { data: { session: isinSession } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": turnstileToken || "" },
         body: JSON.stringify({ prompt, useWebSearch: true })
       });
       const data = await res.json();
@@ -1609,6 +1664,9 @@ ${proposal.payoff ? `<div class="section">
                 </div>
               </>
             )}
+
+            {/* Turnstile invisible widget container */}
+            <div id="turnstile-container" style={{ display: "none" }} />
 
           </div>
         </div>
