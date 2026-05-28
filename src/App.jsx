@@ -304,6 +304,8 @@ const css = `
   .profile-usage-fill.full { background: #c62828; }
   .profile-upgrade-btn { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; margin-top: 1rem; transition: opacity 0.15s; }
   .profile-upgrade-btn:hover { opacity: 0.85; }
+  .profile-danger-btn { width: 100%; padding: 10px; background: none; color: #c62828; border: 1px solid #c62828; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; }
+  .profile-danger-btn:hover { background: #fff5f5; }
   .profile-cancel-btn { width: 100%; padding: 10px; background: none; color: #e65100; border: 1px solid #e65100; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; margin-bottom: 8px; }
   .profile-cancel-btn:hover { background: #fff8f5; }
   .profile-cancel-confirm { background: var(--surface); border: 1px solid #e65100; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 8px; }
@@ -312,8 +314,6 @@ const css = `
   .profile-cancel-confirm-btns button { flex: 1; padding: 8px; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; font-family: 'DM Mono', monospace; }
   .profile-cancel-yes { background: #c62828; color: #fff; border: none; }
   .profile-cancel-yes:hover { opacity: 0.85; }
-  .profile-danger-btn { width: 100%; padding: 10px; background: none; color: #c62828; border: 1px solid #c62828; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; transition: all 0.15s; }
-  .profile-danger-btn:hover { background: #fff5f5; }
   .profile-cancel-no { background: none; border: 1px solid var(--border-md); color: var(--muted); }
   .profile-cancel-no:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -923,6 +923,9 @@ export default function App() {
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
   const [switchAnnualMsg, setSwitchAnnualMsg] = useState("");
   const [cancelMsg, setCancelMsg] = useState("");
+  const [deleteStep, setDeleteStep] = useState(0); // 0=hidden, 1=warn, 2=confirm-email, 3=loading, 4=done
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [riskAppetite, setRiskAppetite] = useState("");
   const [horizon, setHorizon] = useState("");
@@ -935,6 +938,9 @@ export default function App() {
   const [isinLoading, setIsinLoading] = useState({});
   const [isinResults, setIsinResults] = useState({});
   const [isinUsedIndex, setIsinUsedIndex] = useState(null); // index (0|1|2) that consumed ISIN search this batch
+  const [underlyingAnalysis, setUnderlyingAnalysis] = useState({});
+  const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
+  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(null);
   const [history, setHistory] = useState([]);
   const [viewingHistory, setViewingHistory] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -949,15 +955,16 @@ export default function App() {
 
   // Load usage count from Supabase on mount and after each generation
   async function refreshUsage() {
-    if (!user?.email) return;
-    const { data } = await supabase.from("subscriptions").select("usage_count, usage_reset_at").eq("email", user.email).single();
-    if (data) {
-      const resetAt = data.usage_reset_at ? new Date(data.usage_reset_at) : new Date(0);
-      const now = new Date();
-      const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
-      setProposalsUsed(isNewMonth ? 0 : (data.usage_count || 0));
-    }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) return;
+  const { data } = await supabase.from("subscriptions").select("usage_count, usage_reset_at").eq("user_id", session.user.id).single();
+  if (data) {
+    const resetAt = data.usage_reset_at ? new Date(data.usage_reset_at) : new Date(0);
+    const now = new Date();
+    const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
+    setProposalsUsed(isNewMonth ? 0 : (data.usage_count || 0));
   }
+}
 
   React.useEffect(() => { refreshUsage(); }, [user?.email]);
   const isPro = user?.plan === "pro";
@@ -1013,9 +1020,25 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
       }
 
       // Sessione attiva subito (email confirmation disabilitata in Supabase)
-      try { const token = data.session?.access_token; if (token) { fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }, body: JSON.stringify({ name: authName, plan: authPlan }) }); } } catch (_) {}
       const name = authName;
       const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+
+     // Manda mail di benvenuto via Resend (fire and forget)
+      try {
+        const token = data.session?.access_token;
+        console.log("signup session:", data.session);
+console.log("signup session:", data.session);
+console.log("signup token:", data.session?.access_token);
+        console.log("signup token:", token);
+        if (token) {
+          fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ name, plan: authPlan })
+          });
+        }
+      } catch (_) {}
+
       if (authPlan === 'retail') {
         const retailPlan = PLANS.find(p => p.id === 'retail');
         if (retailPlan?.priceId) {
@@ -1258,6 +1281,31 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
     setIsinLoading(prev => ({ ...prev, [index]: false }));
   }
 
+
+  async function analyzeUnderlying(proposal, index) {
+    if (typeof index === 'number' && underlyingAnalysisUsedIndex !== null && underlyingAnalysisUsedIndex !== index) return;
+    if (typeof index === 'number') setUnderlyingAnalysisUsedIndex(index);
+    setUnderlyingAnalysisLoading(prev => ({ ...prev, [index]: true }));
+    const tickers = proposal.underlying?.suggested?.join(', ') || '';
+    const prompt = 'Sei un analista finanziario esperto. Fornisci un analisi sintetica dei seguenti sottostanti: ' + tickers + '. Per ciascun sottostante: 1) settore e profilo qualitativo (2 frasi) 2) volatilita implicita stimata, trend recente 3) punti di forza per certificato strutturato 4) rischi principali. Rispondi SOLO con JSON: {"underlyings":[{"ticker":"<t>","nome":"<nome>","settore":"<s>","profilo":"<testo>","volatilita":"<es. 25-30%>","trend":"<Rialzista|Laterale|Ribassista>","puntiForza":["<p1>","<p2>"],"rischi":["<r1>","<r2>"]}],"correlazione":"<nota o null>","sintesi":"<2 frasi>"}';
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session?.access_token },
+        body: JSON.stringify({ prompt, useWebSearch: false })
+      });
+      const data = await res.json();
+      const rawText = data.content?.map(b => b.text || '').join('') || '';
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      setUnderlyingAnalysis(prev => ({ ...prev, [index]: parsed }));
+    } catch {
+      setUnderlyingAnalysis(prev => ({ ...prev, [index]: { error: true } }));
+    }
+    setUnderlyingAnalysisLoading(prev => ({ ...prev, [index]: false }));
+  }
+
   function toggleCompare(proposal, index) {
     if (!isPro) { setShowUpgradeModal(true); return; } // compare rimane solo Pro+
     const key = `${index}`;
@@ -1463,66 +1511,8 @@ ${proposal.payoff ? `<div class="section">
               I dati, i termini e gli scenari di payoff generati sono puramente indicativi e non vincolanti. I codici ISIN eventualmente suggeriti derivano da ricerche automatizzate su mercati regolamentati e devono essere verificati sulle fonti ufficiali (Euronext Markets, Borsa Italiana, CONSOB) prima di qualsiasi utilizzo. StructuredAI non garantisce l'accuratezza, la completezza o l'aggiornamento delle informazioni fornite.
             </div>
             <div>
-              © 2025 StructuredAI · Tutti i diritti riservati · <span style={{ opacity: 0.7 }}>P.IVA [da inserire] · Sede legale: [da inserire] · Non autorizzato alla prestazione di servizi di investimento</span> · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("support")}>Support</span>
+              © 2025 StructuredAI · Tutti i diritti riservati · <span style={{ opacity: 0.7 }}>P.IVA [da inserire] · Sede legale: [da inserire] · Non autorizzato alla prestazione di servizi di investimento</span>
             </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-
-
-  // ── SUPPORT ───────────────────────────────────────────────────────────────
-  if (screen === "support") return (
-    <>
-      <style>{css}</style>
-      <div className="landing">
-        <nav className="landing-nav">
-          <div className="landing-logo" style={{ cursor: "pointer" }} onClick={() => setScreen("landing")}>
-            <div className="logo-mark">S</div>
-            <div className="logo-name">StructuredAI</div>
-          </div>
-          <div className="landing-nav-actions">
-            <button className="btn-ghost" onClick={() => setScreen(user ? "app" : "landing")}>← Indietro</button>
-          </div>
-        </nav>
-        <div style={{ maxWidth: 680, margin: "0 auto", padding: "4rem 2rem" }}>
-          <div style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--accent)", marginBottom: "1rem" }}>SUPPORTO</div>
-          <h1 style={{ fontFamily: "var(--font-serif)", fontWeight: 300, fontSize: "2.2rem", marginBottom: "0.5rem", lineHeight: 1.3 }}>Come possiamo <em>aiutarti?</em></h1>
-          <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.8, marginBottom: "3rem" }}>
-            Per qualsiasi domanda tecnica, problema con l'account o richiesta commerciale, scrivici direttamente.
-          </p>
-
-          <div style={{ display: "grid", gap: "1.5rem", marginBottom: "3rem" }}>
-            <div style={{ background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.75rem 2rem" }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "var(--muted)", marginBottom: "0.5rem" }}>EMAIL</div>
-              <a href="mailto:support@structuredai.live" style={{ fontSize: 18, color: "var(--accent)", textDecoration: "none", fontFamily: "var(--font-serif)", fontWeight: 300 }}>
-                support@structuredai.live
-              </a>
-              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: "0.75rem", lineHeight: 1.7 }}>
-                Risposta entro 24 ore nei giorni lavorativi.
-              </p>
-            </div>
-
-            <div style={{ background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.75rem 2rem" }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "var(--muted)", marginBottom: "1rem" }}>FAQ</div>
-              {[
-                { q: "Come faccio il reset della password?", a: "Vai alla schermata di accesso e clicca su 'Password dimenticata'. Riceverai un'email con il link di reset." },
-                { q: "Come faccio l'upgrade al piano Retail?", a: "Dal menu del profilo (icona in alto a destra) trovi la sezione Piano. Clicca su Upgrade e verrai reindirizzato a Stripe." },
-                { q: "Posso cancellare il mio abbonamento?", a: "Sì, puoi cancellare in qualsiasi momento dal profilo. L'abbonamento rimane attivo fino alla fine del periodo pagato." },
-                { q: "I codici ISIN sono aggiornati in tempo reale?", a: "I codici ISIN derivano da ricerche su Euronext Markets. Ti consigliamo sempre di verificare sulla fonte ufficiale prima dell'utilizzo." },
-              ].map(({ q, a }, i) => (
-                <div key={i} style={{ borderTop: i > 0 ? "1px solid var(--border)" : "none", paddingTop: i > 0 ? "1rem" : 0, marginTop: i > 0 ? "1rem" : 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: "0.4rem" }}>{q}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.7 }}>{a}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="landing-footer">
-          <div style={{ maxWidth: 860, margin: "0 auto" }}>
-            © 2025 StructuredAI · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("landing")}>Home</span>
           </div>
         </div>
       </div>
@@ -1670,7 +1660,6 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={() => setScreen("support")} style={{ marginRight: 4 }}>Support</button>
           <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
@@ -2087,6 +2076,105 @@ ${proposal.payoff ? `<div class="section">
                 </button>
               </div>
 
+              {/* DELETE ACCOUNT */}
+              <div className="profile-card" style={{ borderColor: deleteStep >= 1 ? "rgba(198,40,40,0.3)" : "var(--border)" }}>
+                <div className="profile-card-title" style={{ color: deleteStep >= 1 ? "#c62828" : undefined }}>Elimina account</div>
+
+                {deleteStep === 0 && (
+                  <div>
+                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14, lineHeight:1.7 }}>
+                      Elimina permanentemente il tuo account, tutti i dati e cancella l'abbonamento attivo su Stripe. <strong>Questa azione è irreversibile.</strong>
+                    </div>
+                    <button className="profile-danger-btn" style={{ borderColor:"#c62828", color:"#c62828" }} onClick={() => { setDeleteStep(1); setDeleteError(""); }}>
+                      Elimina account →
+                    </button>
+                  </div>
+                )}
+
+                {deleteStep === 1 && (
+                  <div>
+                    <div style={{ background:"#fff5f5", border:"1px solid rgba(198,40,40,0.25)", borderRadius:"var(--radius-sm)", padding:"14px 16px", marginBottom:16 }}>
+                      <div style={{ fontSize:13, fontWeight:500, color:"#c62828", marginBottom:8 }}>⚠️ Attenzione — azione irreversibile</div>
+                      <ul style={{ fontSize:12, color:"#7a2020", lineHeight:2, paddingLeft:16 }}>
+                        <li>Il tuo abbonamento Retail verrà <strong>cancellato immediatamente su Stripe</strong></li>
+                        <li>Non riceverai rimborsi per il periodo rimanente</li>
+                        <li>Tutti i tuoi dati e lo storico proposte verranno eliminati</li>
+                        <li>Non potrai recuperare l'account una volta eliminato</li>
+                      </ul>
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button className="profile-danger-btn" style={{ flex:1, borderColor:"#c62828", color:"#c62828" }} onClick={() => { setDeleteStep(2); setDeleteError(""); }}>
+                        Sì, voglio eliminare l'account
+                      </button>
+                      <button className="profile-cancel-no" style={{ flex:1 }} onClick={() => setDeleteStep(0)}>Annulla</button>
+                    </div>
+                  </div>
+                )}
+
+                {deleteStep === 2 && (
+                  <div>
+                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:12, lineHeight:1.7 }}>
+                      Per confermare, inserisci il tuo indirizzo email: <strong>{user.email}</strong>
+                    </div>
+                    <input
+                      style={{ width:"100%", padding:"10px 12px", border:`1px solid ${deleteError ? "#c62828" : "var(--border-md)"}`, borderRadius:"var(--radius-sm)", fontFamily:"'DM Mono', monospace", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", marginBottom:10, boxSizing:"border-box" }}
+                      placeholder="inserisci la tua email..."
+                      value={deleteEmailInput}
+                      onChange={e => { setDeleteEmailInput(e.target.value); setDeleteError(""); }}
+                    />
+                    {deleteError && <div style={{ fontSize:11, color:"#c62828", marginBottom:10 }}>{deleteError}</div>}
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button
+                        style={{ flex:1, padding:10, background:"#c62828", color:"#fff", border:"none", borderRadius:"var(--radius-sm)", fontSize:12, cursor:"pointer", fontFamily:"'DM Mono', monospace", opacity: deleteEmailInput === user.email ? 1 : 0.4 }}
+                        disabled={deleteEmailInput !== user.email}
+                        onClick={async () => {
+                          if (deleteEmailInput !== user.email) { setDeleteError("Email non corretta."); return; }
+                          setDeleteStep(3);
+                          setDeleteError("");
+                          try {
+                            const { data: { session: s } } = await supabase.auth.getSession();
+                            const res = await fetch("/api/delete-account", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setDeleteStep(4);
+                              setTimeout(async () => {
+                                await supabase.auth.signOut();
+                                setUser(null);
+                                setHistory([]);
+                                setScreen("landing");
+                              }, 2500);
+                            } else {
+                              setDeleteError("Errore: " + (data.error || "riprova."));
+                              setDeleteStep(2);
+                            }
+                          } catch(e) {
+                            setDeleteError("Errore di connessione: " + e.message);
+                            setDeleteStep(2);
+                          }
+                        }}>
+                        Elimina definitivamente
+                      </button>
+                      <button className="profile-cancel-no" style={{ flex:1 }} onClick={() => { setDeleteStep(0); setDeleteEmailInput(""); setDeleteError(""); }}>Annulla</button>
+                    </div>
+                  </div>
+                )}
+
+                {deleteStep === 3 && (
+                  <div style={{ textAlign:"center", padding:"1rem 0", fontSize:12, color:"var(--muted)" }}>
+                    ⏳ Eliminazione in corso...
+                  </div>
+                )}
+
+                {deleteStep === 4 && (
+                  <div style={{ textAlign:"center", padding:"1rem 0" }}>
+                    <div style={{ fontSize:20, marginBottom:8 }}>✓</div>
+                    <div style={{ fontSize:13, color:"var(--accent)" }}>Account eliminato. Reindirizzamento...</div>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
@@ -2435,7 +2523,7 @@ ${proposal.payoff ? `<div class="section">
 }
 
 // ─── ProposalCard ─────────────────────────────────────────────────────────────
-function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnderlyings, onSearchISIN, isinLoading, isinResults, isinLocked, onUpgrade, compareSelected, onToggleCompare, onExportPDF }) {
+function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnderlyings, onSearchISIN, isinLoading, isinResults, isinLocked, onUpgrade, compareSelected, onToggleCompare, onExportPDF, onAnalyzeUnderlying, underlyingAnalysisLoading, underlyingAnalysisResult, underlyingAnalysisLocked }) {
   const risk = RISK_COLOR[proposal.riskLevel] || RISK_COLOR["medium"];
   const cat = CAT_COLOR[proposal.category] || CAT_COLOR["Income"];
   const t = proposal.terms || {};
@@ -2461,8 +2549,13 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
               {isSelected ? "✓ Nel confronto" : "⊞ Confronta"}
             </button>
           )}
-          {isPro && onExportPDF && (
+          {onExportPDF && (
             <button className="action-btn" onClick={onExportPDF} style={{ fontSize:11 }}>↓ PDF</button>
+          )}
+          {onAnalyzeUnderlying && !underlyingAnalysisLocked && (
+            <button className="action-btn" onClick={onAnalyzeUnderlying} disabled={underlyingAnalysisLoading} style={{ fontSize:11, background:"var(--accent-light)", color:"var(--accent)", border:"1px solid rgba(26,58,42,0.2)" }}>
+              {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
+            </button>
           )}
           {!isPro && onToggleCompare && (
             <button className="compare-toggle-btn" onClick={onUpgrade}>⊞ Confronta <span style={{ fontSize:9, opacity:0.7 }}>PRO</span></button>
@@ -2566,8 +2659,50 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
             </div>
           )}
         </div>
+
+        {(underlyingAnalysisLoading || underlyingAnalysisResult) && (
+          <div style={{ margin:"12px 0 0 0", padding:"14px 16px", background:"var(--accent-light)", borderRadius:"var(--radius-sm)", border:"1px solid rgba(26,58,42,0.15)" }}>
+            <div style={{ fontSize:10, letterSpacing:"0.1em", color:"var(--accent)", marginBottom:10 }}>ANALISI SOTTOSTANTI</div>
+            {underlyingAnalysisLoading && <div style={{ fontSize:12, color:"var(--muted)" }}>Analisi in corso...</div>}
+            {underlyingAnalysisResult && underlyingAnalysisResult.error && <div style={{ fontSize:12, color:"#c62828" }}>Errore nell'analisi. Riprova.</div>}
+            {underlyingAnalysisResult && !underlyingAnalysisResult.error && (
+              <>
+                {(underlyingAnalysisResult.underlyings || []).map((u, i) => (
+                  <div key={i} style={{ marginBottom:12, paddingBottom:12, borderBottom: i < underlyingAnalysisResult.underlyings.length - 1 ? "1px solid rgba(26,58,42,0.1)" : "none" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:12, fontWeight:600, color:"var(--accent)" }}>{u.ticker}</span>
+                      <span style={{ fontSize:10, padding:"1px 8px", borderRadius:99, background:"var(--surface)", color:"var(--muted)", border:"1px solid var(--border)" }}>{u.settore}</span>
+                      <span style={{ fontSize:10, padding:"1px 8px", borderRadius:99, background: u.trend === "Rialzista" ? "#e8f5e9" : u.trend === "Ribassista" ? "#fce4ec" : "#fff8e1", color: u.trend === "Rialzista" ? "#2e7d32" : u.trend === "Ribassista" ? "#c62828" : "#f57f17" }}>{u.trend}</span>
+                      {u.volatilita && <span style={{ fontSize:10, color:"var(--muted)" }}>Vol: {u.volatilita}</span>}
+                    </div>
+                    <div style={{ fontSize:11, color:"var(--text)", lineHeight:1.6, marginBottom:6 }}>{u.profilo}</div>
+                    <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+                      {u.puntiForza && u.puntiForza.length > 0 && (
+                        <div style={{ flex:1, minWidth:120 }}>
+                          <div style={{ fontSize:9, letterSpacing:"0.07em", color:"#2e7d32", marginBottom:3 }}>PUNTI DI FORZA</div>
+                          {u.puntiForza.map((p, j) => <div key={j} style={{ fontSize:10, color:"var(--text)", marginBottom:2 }}>+ {p}</div>)}
+                        </div>
+                      )}
+                      {u.rischi && u.rischi.length > 0 && (
+                        <div style={{ flex:1, minWidth:120 }}>
+                          <div style={{ fontSize:9, letterSpacing:"0.07em", color:"#c62828", marginBottom:3 }}>RISCHI</div>
+                          {u.rischi.map((r, j) => <div key={j} style={{ fontSize:10, color:"var(--text)", marginBottom:2 }}>! {r}</div>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {underlyingAnalysisResult.correlazione && underlyingAnalysisResult.correlazione !== "null" && (
+                  <div style={{ fontSize:10, color:"var(--muted)", fontStyle:"italic", marginBottom:6 }}>Correlazione: {underlyingAnalysisResult.correlazione}</div>
+                )}
+                {underlyingAnalysisResult.sintesi && (
+                  <div style={{ fontSize:11, color:"var(--accent)", padding:"8px 10px", background:"var(--surface)", borderRadius:"var(--radius-sm)", border:"1px solid rgba(26,58,42,0.12)", marginTop:6 }}>Sintesi: {underlyingAnalysisResult.sintesi}</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
