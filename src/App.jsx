@@ -81,7 +81,7 @@ const PLANS = [
     highlight: false,
     comingSoon: false,
     priceId: "price_1TbRXCQk0TtLlDLRAIVkTBeo",
-    priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho",
+    priceIdAnnual: "price_1TcCMWQk0TtLlDLRWgbXviCl",
   },
   {
     id: "pro-retail",
@@ -1938,7 +1938,7 @@ ${proposal.payoff ? `<div class="section">
                         const res = await fetch("/api/switch-to-annual", {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          body: JSON.stringify({ priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho" })
+                          body: JSON.stringify({ priceIdAnnual: "price_1TcCMWQk0TtLlDLRWgbXviCl" })
                         });
                         const data = await res.json();
                         if (data.success) {
