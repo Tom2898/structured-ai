@@ -55,7 +55,6 @@ const PLANS = [
     ],
     featuresExcluded: [
       "Ricerca ISIN Euronext",
-      "Storico proposte",
       "Confronto strutture",
     ],
     cta: "Inizia gratis",
@@ -75,7 +74,6 @@ const PLANS = [
       "🔍 Ricerca ISIN Euronext reali",
     ],
     featuresExcluded: [
-      "Storico proposte",
       "Confronto strutture",
     ],
     annualNote: "Fatturato €214.80/anno",
@@ -96,7 +94,6 @@ const PLANS = [
       "Export PDF",
       "Caratteristiche del sottostante",
       "🔍 Ricerca ISIN Euronext reali",
-      "Storico proposte personale",
       "Confronto visivo strutture",
       "Simulatore payoff interattivo",
       "Score di rischio visivo",
@@ -119,7 +116,6 @@ const PLANS = [
       "Export PDF con brand",
       "Caratteristiche del sottostante",
       "🔍 Ricerca ISIN Euronext reali",
-      "Storico per cliente",
       "Confronto affiancato strutture",
       "Generazione massiva (multi-struttura)",
       "Template clienti salvati",
@@ -449,14 +445,6 @@ const css = `
   .limit-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s; }
   .limit-fill.warn { background: var(--gold); }
   .limit-fill.full { background: #c62828; }
-  .history-list { display: flex; flex-direction: column; gap: 10px; }
-  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: all 0.12s; }
-  .history-item:hover { border-color: var(--accent-mid); box-shadow: var(--shadow); }
-  .history-icon { width: 36px; height: 36px; background: var(--accent-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .history-info { flex: 1; }
-  .history-name { font-size: 13px; }
-  .history-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .history-chevron { font-size: 10px; color: var(--muted); }
   .empty-state { text-align: center; padding: 3rem; color: var(--muted); font-size: 13px; }
   .action-btn { padding: 5px 12px; font-size: 11px; border: 1px solid var(--border-md); border-radius: var(--radius-sm); background: none; cursor: pointer; color: var(--muted); font-family: 'DM Mono', monospace; transition: all 0.12s; }
   .action-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -648,7 +636,6 @@ const css = `
     .profile-card { padding: 1.25rem; }
 
     /* ── HISTORY */
-    .history-item { padding: 0.875rem 1rem; }
 
     /* ── DISCLAIMER — compact on mobile */
     .disclaimer-banner { display: none !important; }
@@ -941,8 +928,6 @@ export default function App() {
   const [underlyingAnalysis, setUnderlyingAnalysis] = useState({});
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
   const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [viewingHistory, setViewingHistory] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [compareSelected, setCompareSelected] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -1192,14 +1177,7 @@ Reply ONLY with this JSON (no text outside):
       setMobileGenPanel("output"); // switch to results on mobile
       refreshUsage();
       setIsinResults({});
-      setIsinUsedIndex(null);
-      setHistory(h => [{
-        id: Date.now(), risk: riskAppetite, horizon, objective,
-        underlyings: underlyings.join(", "),
-        proposals: parsed.proposals || [],
-        underlyingLabels: underlyings,
-        date: new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })
-      }, ...h]);
+      setIsinUsedIndex(null);
     } catch {
       setProposals([{ error: true, message: "Errore nella generazione. Riprova." }]);
     }
@@ -1649,7 +1627,7 @@ ${proposal.payoff ? `<div class="section">
         </div>
         <div className="topnav-tabs" style={{ display:"flex", alignItems:"center", gap:"1rem" }}>
           <div style={{ width: 16 }} />
-          {[["generator","Genera"],["catalog","Prodotti"],["history","Storico"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
+          {[["generator","Genera"],["catalog","Prodotti"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
             <button key={t} className={`topnav-tab${tab === t ? " active" : ""}`} onClick={() => { setTab(t); setViewingHistory(null); }}>{label}</button>
           ))}
         </div>
@@ -1660,7 +1638,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -1677,11 +1655,7 @@ ${proposal.payoff ? `<div class="section">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
             </svg>
           ), "Prodotti"],
-          ["history", (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-          ), "Storico"],
+          
           ["dashboard", (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
@@ -1745,7 +1719,7 @@ ${proposal.payoff ? `<div class="section">
             <div className="page-title">Dashboard</div>
             <div className="page-sub">{user.name} · {planInfo.name} plan</div>
             <div className="stats-row">
-              <div className="stat-card"><div className="stat-label">PROPOSTE GENERATE</div><div className="stat-value">{history.length}</div><div className="stat-sub">questa sessione</div></div>
+              
               <div className="stat-card"><div className="stat-label">PRODOTTI IN CATALOGO</div><div className="stat-value">12</div><div className="stat-sub">tutte le categorie</div></div>
               <div className="stat-card"><div className="stat-label">RICERCA ISIN</div><div className="stat-value" style={{ fontSize:"1rem", paddingTop:6 }}>{canSearchISIN ? "✓ Attiva" : "Pro/Retail"}</div><div className="stat-sub">{canSearchISIN ? (isRetail ? "Solo prodotti attivi" : "Euronext disponibile") : "upgrade per abilitare"}</div></div>
               <div className="stat-card"><div className="stat-label">PIANO ATTUALE</div><div className="stat-value" style={{ fontSize:"1.1rem", paddingTop:4 }}>{planInfo.name}</div><div className="stat-sub">{proposalLimit === Infinity ? "Proposte illimitate" : `${proposalsUsed} / ${proposalLimit} utilizzate`}</div></div>
@@ -1804,102 +1778,7 @@ ${proposal.payoff ? `<div class="section">
         )}
 
         {/* HISTORY */}
-        {tab === "history" && (
-          <>
-            <div className="page-title">Storico Proposte</div>
-            <div className="page-sub">Tutte le proposte generate in questa sessione</div>
-
-            {user.plan === "free" ? (
-              <div style={{ position: "relative" }}>
-                {/* Greyed-out fake list */}
-                <div style={{ filter: "blur(3px) grayscale(0.6)", opacity: 0.4, pointerEvents: "none", userSelect: "none" }}>
-                  {[1,2,3].map(i => (
-                    <div key={i} className="history-item" style={{ marginBottom: 10 }}>
-                      <div className="history-icon">📋</div>
-                      <div className="history-info">
-                        <div className="history-name" style={{ background:"var(--border)", borderRadius:4, height:13, width:`${140 + i * 30}px` }} />
-                        <div className="history-meta" style={{ background:"var(--border)", borderRadius:4, height:11, width:`${100 + i * 20}px`, marginTop:6 }} />
-                      </div>
-                      <div className="history-chevron">→</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Paywall overlay */}
-                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "2rem" }}>
-                  <div style={{ fontSize: 28 }}>🔒</div>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: "1.3rem", fontWeight: 300, textAlign: "center" }}>Storico disponibile dal piano Retail</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", maxWidth: 340, lineHeight: 1.7 }}>
-                    Accedi allo storico completo delle proposte generate, rivedile in qualsiasi momento e condividile con i clienti.
-                  </div>
-                  <button className="upgrade-btn" style={{ marginTop: 4 }} onClick={() => {
-                    const retailPlan = PLANS.find(p => p.id === "retail");
-                    if (retailPlan?.priceId) handleStripeCheckout(retailPlan);
-                    else setShowUpgradeModal(true);
-                  }}>
-                    Passa a Retail — €19.90/mese →
-                  </button>
-                  <div style={{ fontSize: 10, color: "var(--muted)" }}>Oppure <span style={{ textDecoration: "underline", cursor: "pointer" }} onClick={() => setShowUpgradeModal(true)}>esplora tutti i piani</span></div>
-                </div>
-              </div>
-            ) : viewingHistory ? (
-              <>
-                <button className="action-btn" style={{ marginBottom: "1.25rem" }} onClick={() => setViewingHistory(null)}>← Torna alla lista</button>
-                <div style={{ marginBottom: "0.5rem", fontSize: 12, color: "var(--muted)" }}>{viewingHistory.date} · {viewingHistory.risk} · {viewingHistory.horizon}</div>
-                <div className="output-area">
-                  {viewingHistory.proposals.map((p, i) => (
-                    <ProposalCard key={i} proposal={p} index={i} isPro={isPro} canSearchISIN={canSearchISIN} isRetail={isRetail}
-                      userUnderlyings={viewingHistory.underlyingLabels}
-                      onSearchISIN={() => searchISIN(p, `h_${viewingHistory.id}_${i}`)}
-                      isinLoading={isinLoading[`h_${viewingHistory.id}_${i}`]}
-                      isinResults={isinResults[`h_${viewingHistory.id}_${i}`]}
-                      onUpgrade={() => setShowUpgradeModal(true)}
-                      compareSelected={compareSelected}
-                      onToggleCompare={() => toggleCompare(p, `h_${viewingHistory.id}_${i}`)}
-                      onExportPDF={() => exportSinglePDF(p)} />
-                  ))}
-                </div>
-              </>
-            ) : history.length === 0 ? (
-              <div className="empty-state">Nessuna proposta ancora. Generane una →</div>
-            ) : (
-              <div className="history-list">
-                {history.map(item => (
-                  <div key={item.id} className="history-item" onClick={() => setViewingHistory(item)}>
-                    <div className="history-icon">📋</div>
-                    <div className="history-info">
-                      <div className="history-name">{item.objective} · {item.risk}</div>
-                      <div className="history-meta">{item.horizon} · {item.proposals.length} strutture · {item.date}</div>
-                    </div>
-                    <div className="history-chevron">→</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* GENERATOR */}
-        {tab === "profile" && (() => {
-          const currentPlan = PLANS.find(p => p.id === user.plan) || PLANS[0];
-          const limit = currentPlan.proposalLimit === Infinity ? null : currentPlan.proposalLimit;
-          const used = proposalsUsed;
-          const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-          const fillClass = pct >= 100 ? "full" : pct >= 75 ? "warn" : "";
-          const nextPlan = PLANS.find(p => p.id === (user.plan === "free" ? "retail" : user.plan === "retail" ? "pro" : null));
-          return (
-            <div className="profile-page">
-              <div className="profile-card">
-                <div className="profile-card-title">Account</div>
-                <div className="profile-avatar-row">
-                  <div className="profile-avatar-big">{user.initials}</div>
-                  <div>
-                    <div className="profile-name">{user.name}</div>
-                    <div className="profile-email">{user.email}</div>
-                  </div>
-                </div>
-                <div className="profile-field">
-                  <span className="profile-field-label">PIANO ATTIVO</span>
-                  <span className={`profile-plan-badge ${user.plan}`}>{user.plan.toUpperCase()}</span>
+</span>
                 </div>
                 <div className="profile-field">
                   <span className="profile-field-label">PREZZO</span>
@@ -2071,7 +1950,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setHistory([]); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
@@ -2143,8 +2022,7 @@ ${proposal.payoff ? `<div class="section">
                               setTimeout(async () => {
                                 await supabase.auth.signOut();
                                 setUser(null);
-                                setHistory([]);
-                                setScreen("landing");
+                                                                setScreen("landing");
                               }, 2500);
                             } else {
                               setDeleteError("Errore: " + (data.error || "riprova."));
