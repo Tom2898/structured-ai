@@ -636,7 +636,7 @@ const css = `
     .profile-card { padding: 1.25rem; }
 
     /* ── HISTORY */
-
+  
     /* ── DISCLAIMER — compact on mobile */
     .disclaimer-banner { display: none !important; }
     .disclaimer-banner-mobile { display: flex !important; }
@@ -1177,7 +1177,7 @@ Reply ONLY with this JSON (no text outside):
       setMobileGenPanel("output"); // switch to results on mobile
       refreshUsage();
       setIsinResults({});
-      setIsinUsedIndex(null);
+      setIsinUsedIndex(null);
     } catch {
       setProposals([{ error: true, message: "Errore nella generazione. Riprova." }]);
     }
@@ -1655,7 +1655,6 @@ ${proposal.payoff ? `<div class="section">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
             </svg>
           ), "Prodotti"],
-          
           ["dashboard", (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
@@ -1719,7 +1718,7 @@ ${proposal.payoff ? `<div class="section">
             <div className="page-title">Dashboard</div>
             <div className="page-sub">{user.name} · {planInfo.name} plan</div>
             <div className="stats-row">
-              
+              <div className="stat-card"><div className="stat-label">PROPOSTE GENERATE</div><div className="stat-value">{proposalsUsed}</div><div className="stat-sub">questo mese</div></div>
               <div className="stat-card"><div className="stat-label">PRODOTTI IN CATALOGO</div><div className="stat-value">12</div><div className="stat-sub">tutte le categorie</div></div>
               <div className="stat-card"><div className="stat-label">RICERCA ISIN</div><div className="stat-value" style={{ fontSize:"1rem", paddingTop:6 }}>{canSearchISIN ? "✓ Attiva" : "Pro/Retail"}</div><div className="stat-sub">{canSearchISIN ? (isRetail ? "Solo prodotti attivi" : "Euronext disponibile") : "upgrade per abilitare"}</div></div>
               <div className="stat-card"><div className="stat-label">PIANO ATTUALE</div><div className="stat-value" style={{ fontSize:"1.1rem", paddingTop:4 }}>{planInfo.name}</div><div className="stat-sub">{proposalLimit === Infinity ? "Proposte illimitate" : `${proposalsUsed} / ${proposalLimit} utilizzate`}</div></div>
@@ -1777,8 +1776,29 @@ ${proposal.payoff ? `<div class="section">
           </>
         )}
 
-        {/* HISTORY */}
-</span>
+
+        {/* GENERATOR */}
+        {tab === "profile" && (() => {
+          const currentPlan = PLANS.find(p => p.id === user.plan) || PLANS[0];
+          const limit = currentPlan.proposalLimit === Infinity ? null : currentPlan.proposalLimit;
+          const used = proposalsUsed;
+          const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+          const fillClass = pct >= 100 ? "full" : pct >= 75 ? "warn" : "";
+          const nextPlan = PLANS.find(p => p.id === (user.plan === "free" ? "retail" : user.plan === "retail" ? "pro" : null));
+          return (
+            <div className="profile-page">
+              <div className="profile-card">
+                <div className="profile-card-title">Account</div>
+                <div className="profile-avatar-row">
+                  <div className="profile-avatar-big">{user.initials}</div>
+                  <div>
+                    <div className="profile-name">{user.name}</div>
+                    <div className="profile-email">{user.email}</div>
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <span className="profile-field-label">PIANO ATTIVO</span>
+                  <span className={`profile-plan-badge ${user.plan}`}>{user.plan.toUpperCase()}</span>
                 </div>
                 <div className="profile-field">
                   <span className="profile-field-label">PREZZO</span>
@@ -2022,7 +2042,8 @@ ${proposal.payoff ? `<div class="section">
                               setTimeout(async () => {
                                 await supabase.auth.signOut();
                                 setUser(null);
-                                                                setScreen("landing");
+                               
+                                setScreen("landing");
                               }, 2500);
                             } else {
                               setDeleteError("Errore: " + (data.error || "riprova."));
