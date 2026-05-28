@@ -66,7 +66,7 @@ const PLANS = [
     id: "retail",
     name: "Retail",
     priceMonthly: "€19.90", priceAnnual: "€17.90", period: "/mese",
-    proposalLimit: 100,
+    proposalLimit: 20,
     features: [
       "100 proposte/mese",
       "Tutti i 12 prodotti",
@@ -2351,7 +2351,11 @@ ${proposal.payoff ? `<div class="section">
                         onUpgrade={() => setShowUpgradeModal(true)}
                         compareSelected={compareSelected}
                         onToggleCompare={() => toggleCompare(p, i)}
-                        onExportPDF={() => exportSinglePDF(e)} />
+                        onExportPDF={() => exportSinglePDF(p)}
+                        onAnalyzeUnderlying={() => analyzeUnderlying(p, i)}
+                        underlyingAnalysisLoading={underlyingAnalysisLoading[i]}
+                        underlyingAnalysisResult={underlyingAnalysis[i]}
+                        underlyingAnalysisLocked={typeof underlyingAnalysisUsedIndex === 'number' && underlyingAnalysisUsedIndex !== i} />
                 ))}
               </div>
             </div>
