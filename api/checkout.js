@@ -3,7 +3,7 @@
 // Whitelist of valid price IDs — prevents passing arbitrary Stripe prices
 const ALLOWED_PRICE_IDS = new Set([
   'price_1TbRXCQk0TtLlDLRAIVkTBeo', // Retail mensile
-  'price_1TbRXiQk0TtLlDLRuRYpb1ho', // Retail annuale
+  'price_1TcCMWQk0TtLlDLRWgbXviCl', // Retail annuale
 ]);
 
 export default async function handler(req, res) {
