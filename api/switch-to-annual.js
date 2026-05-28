@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   if (!priceIdAnnual) return res.status(400).json({ error: 'priceIdAnnual mancante' });
 
   // Whitelist: only the known annual price ID is accepted
-  const ALLOWED_ANNUAL_PRICE_IDS = new Set(['price_1TahpuHcctqaGDVzW2q6nztf']);
+  const ALLOWED_ANNUAL_PRICE_IDS = new Set(['price_1TbRXiQk0TtLlDLRuRYpb1ho']);
   if (!ALLOWED_ANNUAL_PRICE_IDS.has(priceIdAnnual)) {
     return res.status(400).json({ error: 'Piano non valido.' });
   }
