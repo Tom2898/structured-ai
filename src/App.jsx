@@ -80,8 +80,8 @@ const PLANS = [
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
-    priceId: "price_1TbRmrQk0TtLlDLRPYoHLzUX",
-    priceIdAnnual: "price_1TbRnAQk0TtLlDLRjCoUROqK",
+    priceId: "price_1TbRXCQk0TtLlDLRAIVkTBeo",
+    priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho",
   },
   {
     id: "pro-retail",
