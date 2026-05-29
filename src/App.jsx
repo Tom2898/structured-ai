@@ -1013,10 +1013,11 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
   const selectedPriceId = isAnnual && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId;
   if (!selectedPriceId) return false;
   try {
+    const { data: { session: checkoutSession } } = await supabase.auth.getSession();
     const res = await fetch("/api/checkout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: selectedPriceId, email: user?.email || authEmail || "" })
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${checkoutSession?.access_token}` },
+      body: JSON.stringify({ priceId: selectedPriceId })
     });
     const data = await res.json();
     if (data.url) {
