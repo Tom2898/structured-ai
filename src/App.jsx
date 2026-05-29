@@ -1352,12 +1352,10 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
   }
 
   function handlePrintPDF() {
-    if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
     setTimeout(() => window.print(), 100);
   }
 
   function exportSinglePDF(proposal) {
-    if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
     const risk = RISK_COLOR[proposal.riskLevel] || RISK_COLOR["medium"];
     const cat = CAT_COLOR[proposal.category] || CAT_COLOR["Income"];
     const t = proposal.terms || {};
@@ -2421,9 +2419,6 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
               {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
             </button>
           )}
-          {!isPro && onToggleCompare && (
-            <button className="compare-toggle-btn" onClick={onUpgrade}>⊞ Confronta <span style={{ fontSize:9, opacity:0.7 }}>PRO</span></button>
-          )}
           {canSearchISIN && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
               {isinLoading ? "⏳ Ricerca..." : "🔍 Cerca ISIN Euronext"}
@@ -2484,7 +2479,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontSize:12 }}>🔍</span>
               <span style={{ fontSize:11, color:"var(--muted)" }}>Certificati simili su Euronext</span>
-              <span className="isin-badge">{isRetail ? "RETAIL" : "PRO"}</span>
+              <span className="isin-badge">{canSearchISIN ? (isRetail ? "RETAIL" : "PRO") : "RETAIL / PRO"}</span>
             </div>
             {!canSearchISIN && <button className="isin-search-btn" onClick={onUpgrade} style={{ fontSize:10, borderColor:"var(--pro)", color:"var(--pro)" }}>Sblocca con Retail/Pro →</button>}
             {canSearchISIN && !isinResults && !isinLoading && !isinLocked && (
