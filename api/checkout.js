@@ -68,14 +68,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Piano non valido.' });
   }
 
-  // ── Check no active subscription already ────────────────────────────────────
+  // ── Check no active paid subscription already ───────────────────────────────
   const { data: existingSub } = await supabase
     .from('subscriptions')
-    .select('status')
+    .select('status, plan')
     .eq('user_id', authUser.id)
     .single();
 
-  if (existingSub?.status === 'active') {
+  if (existingSub?.status === 'active' && existingSub?.plan !== 'free') {
     return res.status(400).json({ error: 'Hai già un abbonamento attivo.' });
   }
 
