@@ -18,7 +18,19 @@ export default async function handler(req, res) {
   if (authError || !authUser) return res.status(401).json({ error: 'Token non valido.' });
 
   const email = authUser.email;
-  const { name, plan } = req.body;
+  const { name } = req.body;
+
+  // ── Plan comes from DB, never from body ──────────────────────────────────────
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('plan')
+    .eq('user_id', authUser.id)
+    .single();
+
+  const plan = sub?.plan || 'free';
+  const ALLOWED_PLANS = ['free', 'retail', 'pro'];
+  const safePlan = ALLOWED_PLANS.includes(plan) ? plan : 'free';
+  const safeName = typeof name === 'string' ? name.slice(0, 100).replace(/[<>]/g, '') : '';
 
   const planNames = { free: 'Free', retail: 'Retail' };
 
@@ -38,8 +50,8 @@ export default async function handler(req, res) {
     ],
   };
 
-  const planLabel = planNames[plan] || 'Free';
-  const features = planFeatures[plan] || planFeatures.free;
+  const planLabel = planNames[safePlan] || 'Free';
+  const features = planFeatures[safePlan] || planFeatures.free;
   const featuresHtml = features
     .map(f => `
       <tr>
@@ -79,7 +91,7 @@ export default async function handler(req, res) {
           <td style="padding:40px 40px 32px;">
             <p style="font-size:11px;letter-spacing:0.1em;color:#1a3a2a;margin:0 0 12px;">BENVENUTO</p>
             <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:300;color:#1a1a18;margin:0 0 16px;line-height:1.3;">
-              Ciao ${name || 'utente'},<br><em style="font-style:italic;color:#2d5c40;">il tuo account è attivo.</em>
+              Ciao ${safeName || 'utente'},<br><em style="font-style:italic;color:#2d5c40;">il tuo account è attivo.</em>
             </h1>
             <p style="font-size:13px;color:#6b6b65;line-height:1.8;margin:0 0 32px;">
               Sei ora su <strong style="color:#1a1a18;">StructuredAI</strong> con il piano <strong style="color:#1a3a2a;">${planLabel}</strong>. Puoi già iniziare a generare proposte strutturate per i tuoi clienti.

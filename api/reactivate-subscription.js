@@ -17,11 +17,11 @@ export default async function handler(req, res) {
   if (authError || !user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    // Get subscription id from Supabase
+    // Get subscription id from Supabase — lookup by user_id, never by email
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, cancel_at_period_end, status')
-      .eq('email', user.email)
+      .eq('user_id', user.id)
       .single();
 
     if (subError || !sub?.stripe_subscription_id) {
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
         cancel_at: null,
         updated_at: new Date().toISOString(),
       })
-      .eq('email', user.email);
+      .eq('user_id', user.id);
 
     return res.status(200).json({ success: true });
 

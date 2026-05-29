@@ -8,6 +8,20 @@ const supabase = createClient(
 // ── Limits (keep in sync with App.jsx PLANS) ─────────────────────────────────
 const PLAN_LIMITS = { free: 3, retail: 60, pro: 500 };
 
+// ── Turnstile verification ────────────────────────────────────────────────────
+async function verifyTurnstile(token, ip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) { console.warn('TURNSTILE_SECRET_KEY not set'); return true; }
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ secret, response: token, ...(ip ? { remoteip: ip } : {}) }),
+  });
+  const data = await res.json();
+  return data.success === true;
+}
+
 // ── Input constraints ─────────────────────────────────────────────────────────
 const MAX_PROMPT_CHARS = 8000;
 const MAX_UNDERLYINGS  = 20;
@@ -34,6 +48,14 @@ export default async function handler(req, res) {
   if (authError || !authUser) return res.status(401).json({ error: 'Token non valido.' });
 
   const email = authUser.email;
+
+  // ── 1b. Turnstile verification ───────────────────────────────────────────────
+  const turnstileToken = req.headers['x-turnstile-token'] || '';
+  const clientIp = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || '';
+  const turnstileOk = await verifyTurnstile(turnstileToken, clientIp);
+  if (!turnstileOk) {
+    return res.status(403).json({ error: 'Verifica di sicurezza fallita. Ricarica la pagina e riprova.' });
+  }
 
   // ── 2. Input validation ──────────────────────────────────────────────────────
   const { prompt, useWebSearch } = req.body;

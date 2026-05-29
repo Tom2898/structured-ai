@@ -27,11 +27,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get subscription from Supabase
+    // Get subscription from Supabase — lookup by user_id, never by email
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, billing_interval')
-      .eq('email', user.email)
+      .eq('user_id', user.id)
       .single();
 
     if (subError || !sub?.stripe_subscription_id) {
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     await supabase
       .from('subscriptions')
       .update({ billing_interval: 'year', updated_at: new Date().toISOString() })
-      .eq('email', user.email);
+      .eq('user_id', user.id);
 
     return res.status(200).json({ success: true });
 
