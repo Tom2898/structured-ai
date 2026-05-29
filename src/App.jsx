@@ -1462,7 +1462,7 @@ ${proposal.payoff ? `<div class="section">
             { icon: "🧠", title: "Basato sull'AI", sub: "Abbina il prodotto giusto al profilo" },
             { icon: "📊", title: "Term sheet completi", sub: "Barriera, cedola, payoff, sottostante" },
             { icon: "🗂", title: "Selezione guidata", sub: "Strutture filtrate per obiettivo" },
-            { icon: "🔍", title: "ISIN Euronext (Pro)", sub: "Certificati reali con ISIN" },
+            { icon: "🔍", title: "ISIN Euronext (Retail/Pro)", sub: "Certificati reali con ISIN" },
           ].map(f => (
             <div className="feature-item" key={f.title}>
               <div className="feature-icon">{f.icon}</div>
