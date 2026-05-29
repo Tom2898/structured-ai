@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
@@ -106,12 +107,19 @@ function upgradeEmailHtml(name) {
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).end();
 
-  // ── Verify cron secret to prevent unauthorized calls ────────────────────────
+  // ── Verify cron secret with timing-safe comparison ──────────────────────────
   const authHeader = req.headers['authorization'] || '';
   const secret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: 'Non autorizzato.' });
+  const expected = process.env.CRON_SECRET;
+  if (!secret || !expected) return res.status(401).json({ error: 'Non autorizzato.' });
+
+  let authorized = false;
+  try {
+    authorized = timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+  } catch (_) {
+    authorized = false;
   }
+  if (!authorized) return res.status(401).json({ error: 'Non autorizzato.' });
 
   try {
     // ── Fetch all free users from subscriptions table ────────────────────────
@@ -124,7 +132,7 @@ export default async function handler(req, res) {
     if (error) throw error;
 
     // ── Also get users with no subscription row (registered but never paid) ──
-    const { data: { users: allAuthUsers } } = await supabase.auth.admin.listUsers();
+    const { data: { users: allAuthUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000, page: 1 });
     const emailsInSubs = new Set((freeSubs || []).map(s => s.email));
 
     // Combine: free subs + auth users without any sub row
