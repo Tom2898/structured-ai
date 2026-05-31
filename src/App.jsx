@@ -1162,39 +1162,29 @@ console.log("signup token:", data.session?.access_token);
 
     const productListStr = allowedProducts.map(p => `  - ${p.id}: ${p.name} (${p.category}, rischio ${RISK_COLOR[p.risk].label})`).join("\n");
 
-    const prompt = `You are a structured products expert at a European private bank with deep knowledge of certificates listed on Euronext Milan and Borsa Italiana.
-
+    const prompt = `You are a structured products expert at a private bank.
 A client has the following profile:
 - Risk appetite: ${riskAppetite}
 - Investment horizon: ${horizon}
 - Investment objective: ${objective}
 
-AVAILABLE UNDERLYINGS — use ONLY these:
+AVAILABLE UNDERLYINGS — the client has selected these and ONLY these:
 ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
+${underlyings.length > 1 ? `
+BASKET INSTRUCTION: The client selected ${underlyings.length} underlyings. You MUST:
+- Propose at least 1 structure using ALL ${underlyings.length} as a basket (worst-of or equal-weight)
+- The remaining proposals can use a subset or single underlying if it genuinely fits better
+- For basket proposals set "type" to "Basket" and include all tickers in "suggested"
+- Worst-of basket structures (worstof, autocall) are especially suitable for baskets of 2-4 stocks
+` : ''}
 
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
 
-REALISM RULES — all terms must reflect actual market conditions for European structured products in 2024-2025:
-- Autocall/Phoenix barriers: typically 50-70% of strike; coupons 4-12% p.a. depending on underlying volatility
-- Capital Protected Notes: participation 80-130% depending on horizon; protection always 100% at maturity only
-- Reverse Convertible: coupons 6-15% p.a.; strike always at 100%; no barrier variant
-- Barrier Reverse Conv.: barriers 50-75%; coupons 5-12% p.a.
-- Bonus Certificate: bonus level 110-140%; barriers 50-70% (American/continuous)
-- Express Certificate: step-up premium 5-15% per observation; annual observation dates
-- Worst-of Autocall: higher coupons 8-18% p.a. due to basket risk; barriers 50-65%
-- Outperformance: participation 120-200% above strike; no downside protection
-- Twin Win: participation 100-150% both directions; barrier 50-70%
-- Maturities: 12, 18, 24, 36 months are most common; match to client horizon
-- Use realistic vol-adjusted terms: high-vol underlyings (crypto ETF, single biotech) → lower barriers, higher coupons; low-vol (index, blue chip) → higher barriers possible, lower coupons
-- Observation frequency: monthly or quarterly for autocalls/phoenix; annual for express
-
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
-3. Propose EXACTLY 3 structures that best fit the profile
-4. Terms must be realistic and internally consistent — a barrier of 40% on a low-vol index is unrealistic; a coupon of 3% on a worst-of basket is unrealistic
-5. Payoff scenarios must use actual numbers based on the terms you proposed
+3. Propose EXACTLY 3 structures from the allowed list that best fit the profile
 
 Reply ONLY with this JSON (no text outside):
 {
@@ -1204,25 +1194,25 @@ Reply ONLY with this JSON (no text outside):
       "productId": "<id>",
       "productName": "<name>",
       "productIcon": "<icon>",
-      "rationale": "<2-3 sentences explaining why this structure fits this client profile and these underlyings>",
+      "rationale": "<2-3 sentences>",
       "underlying": {
         "suggested": ["<ticker from client list>"],
         "type": "<Index/Single Stock/Basket/Commodity/ETF>",
-        "rationale": "<why this underlying fits the structure>"
+        "rationale": "<brief>"
       },
       "terms": {
-        "maturity": "<e.g. 24 months>",
+        "maturity": "<e.g. 18 months>",
         "strike": "<e.g. 100%>",
         "barrier": "<e.g. 60% or N/A>",
-        "coupon": "<e.g. 7.5% p.a. or N/A>",
-        "participation": "<e.g. 120% upside or N/A>",
-        "protection": "<e.g. 100% at maturity or N/A>",
+        "coupon": "<e.g. 8% p.a. or N/A>",
+        "participation": "<e.g. 100% upside or N/A>",
+        "protection": "<e.g. 100% or N/A>",
         "observationFrequency": "<e.g. quarterly or N/A>"
       },
       "payoff": {
-        "bull": "<concrete outcome with numbers, e.g. 'Underlying +20%: early redemption at month 12 + 7.5% coupon = 107.5%'>",
-        "flat": "<concrete outcome with numbers>",
-        "bear": "<concrete outcome with numbers, including barrier breach scenario if applicable>"
+        "bull": "<outcome if underlying rises>",
+        "flat": "<outcome if underlying is flat>",
+        "bear": "<outcome if underlying falls>"
       },
       "riskLevel": "<low|medium-low|medium|medium-high|high>",
       "category": "<Income|Protection|Growth>"
