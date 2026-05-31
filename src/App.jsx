@@ -1328,7 +1328,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session?.access_token },
-        body: JSON.stringify({ prompt, useWebSearch: false })
+        body: JSON.stringify({ prompt, useWebSearch: false, skipUsage: true })
       });
       const data = await res.json();
       const rawText = data.content?.map(b => b.text || '').join('') || '';
@@ -2420,7 +2420,10 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
               {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
             </button>
           )}
-          {canSearchISIN && (
+          {onAnalyzeUnderlying && underlyingAnalysisLocked && (
+            <span style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>🔒 Analisi già usata su altra struttura</span>
+          )}
+          {canSearchISIN && !isinLocked && !isinResults && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
               {isinLoading ? "⏳ Ricerca..." : "🔍 Cerca ISIN Euronext"}
             </button>

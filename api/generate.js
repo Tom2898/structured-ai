@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   }
 
   // ── 2. Input validation ──────────────────────────────────────────────────────
-  const { prompt, useWebSearch } = req.body;
+  const { prompt, useWebSearch, skipUsage } = req.body;
 
   if (!prompt || typeof prompt !== 'string') {
     return res.status(400).json({ error: 'Prompt mancante.' });
@@ -67,8 +67,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Input troppo lungo.' });
   }
 
-  // ── 3. Usage check server-side (only for proposal generation, not ISIN) ──────
-  if (!useWebSearch) {
+  // ── 3. Usage check server-side (only for proposal generation, not ISIN/analysis) ──────
+  if (!useWebSearch && !skipUsage) {
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('plan, status, usage_count, usage_reset_at')
