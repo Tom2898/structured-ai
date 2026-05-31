@@ -961,20 +961,20 @@ export default function App() {
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [catFilter, setCatFilter] = useState("All");
-  const [riskAppetite, setRiskAppetite] = useState(() => { try { return localStorage.getItem("sai_riskAppetite") || ""; } catch { return ""; } });
-  const [horizon, setHorizon] = useState(() => { try { return localStorage.getItem("sai_horizon") || ""; } catch { return ""; } });
-  const [objective, setObjective] = useState(() => { try { return localStorage.getItem("sai_objective") || ""; } catch { return ""; } });
-  const [selectedProductIds, setSelectedProductIds] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_selectedProductIds") || "[]"); } catch { return []; } });
+  const [riskAppetite, setRiskAppetite] = useState("");
+  const [horizon, setHorizon] = useState("");
+  const [objective, setObjective] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [underlyingInput, setUnderlyingInput] = useState("");
-  const [underlyings, setUnderlyings] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyings") || "[]"); } catch { return []; } });
-  const [proposals, setProposals] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_proposals") || "[]"); } catch { return []; } });
+  const [underlyings, setUnderlyings] = useState([]);
+  const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isinLoading, setIsinLoading] = useState({});
-  const [isinResults, setIsinResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_isinResults") || "{}"); } catch { return {}; } });
-  const [isinUsedIndex, setIsinUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_isinUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
-  const [underlyingAnalysis, setUnderlyingAnalysis] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyingAnalysis") || "{}"); } catch { return {}; } });
+  const [isinResults, setIsinResults] = useState({});
+  const [isinUsedIndex, setIsinUsedIndex] = useState(null); // index (0|1|2) that consumed ISIN search this batch
+  const [underlyingAnalysis, setUnderlyingAnalysis] = useState({});
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
-  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_underlyingAnalysisUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
+  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [compareSelected, setCompareSelected] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -999,22 +999,6 @@ export default function App() {
 }
 
   React.useEffect(() => { refreshUsage(); }, [user?.email]);
-
-  // Persist generator state to localStorage
-  React.useEffect(() => { try { localStorage.setItem("sai_proposals", JSON.stringify(proposals)); } catch {} }, [proposals]);
-  React.useEffect(() => { try { localStorage.setItem("sai_isinResults", JSON.stringify(isinResults)); } catch {} }, [isinResults]);
-  React.useEffect(() => { try { localStorage.setItem("sai_isinUsedIndex", JSON.stringify(isinUsedIndex)); } catch {} }, [isinUsedIndex]);
-  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysis", JSON.stringify(underlyingAnalysis)); } catch {} }, [underlyingAnalysis]);
-  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysisUsedIndex", JSON.stringify(underlyingAnalysisUsedIndex)); } catch {} }, [underlyingAnalysisUsedIndex]);
-  React.useEffect(() => { try { localStorage.setItem("sai_riskAppetite", riskAppetite); } catch {} }, [riskAppetite]);
-  React.useEffect(() => { try { localStorage.setItem("sai_horizon", horizon); } catch {} }, [horizon]);
-  React.useEffect(() => { try { localStorage.setItem("sai_objective", objective); } catch {} }, [objective]);
-  React.useEffect(() => { try { localStorage.setItem("sai_underlyings", JSON.stringify(underlyings)); } catch {} }, [underlyings]);
-  React.useEffect(() => { try { localStorage.setItem("sai_selectedProductIds", JSON.stringify(selectedProductIds)); } catch {} }, [selectedProductIds]);
-
-  function clearSaiStorage() {
-    ["sai_proposals","sai_isinResults","sai_isinUsedIndex","sai_underlyingAnalysis","sai_underlyingAnalysisUsedIndex","sai_riskAppetite","sai_horizon","sai_objective","sai_underlyings","sai_selectedProductIds"].forEach(k => { try { localStorage.removeItem(k); } catch {} });
-  }
   const isPro = user?.plan === "pro";
   const isRetail = user?.plan === "retail";
   const canSearchISIN = isPro || isRetail;
@@ -1178,22 +1162,39 @@ console.log("signup token:", data.session?.access_token);
 
     const productListStr = allowedProducts.map(p => `  - ${p.id}: ${p.name} (${p.category}, rischio ${RISK_COLOR[p.risk].label})`).join("\n");
 
-    const prompt = `You are a structured products expert at a private bank.
+    const prompt = `You are a structured products expert at a European private bank with deep knowledge of certificates listed on Euronext Milan and Borsa Italiana.
+
 A client has the following profile:
 - Risk appetite: ${riskAppetite}
 - Investment horizon: ${horizon}
 - Investment objective: ${objective}
 
-AVAILABLE UNDERLYINGS — the client has selected these and ONLY these:
+AVAILABLE UNDERLYINGS — use ONLY these:
 ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
 
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
 
+REALISM RULES — all terms must reflect actual market conditions for European structured products in 2024-2025:
+- Autocall/Phoenix barriers: typically 50-70% of strike; coupons 4-12% p.a. depending on underlying volatility
+- Capital Protected Notes: participation 80-130% depending on horizon; protection always 100% at maturity only
+- Reverse Convertible: coupons 6-15% p.a.; strike always at 100%; no barrier variant
+- Barrier Reverse Conv.: barriers 50-75%; coupons 5-12% p.a.
+- Bonus Certificate: bonus level 110-140%; barriers 50-70% (American/continuous)
+- Express Certificate: step-up premium 5-15% per observation; annual observation dates
+- Worst-of Autocall: higher coupons 8-18% p.a. due to basket risk; barriers 50-65%
+- Outperformance: participation 120-200% above strike; no downside protection
+- Twin Win: participation 100-150% both directions; barrier 50-70%
+- Maturities: 12, 18, 24, 36 months are most common; match to client horizon
+- Use realistic vol-adjusted terms: high-vol underlyings (crypto ETF, single biotech) → lower barriers, higher coupons; low-vol (index, blue chip) → higher barriers possible, lower coupons
+- Observation frequency: monthly or quarterly for autocalls/phoenix; annual for express
+
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
-3. Propose EXACTLY 3 structures from the allowed list that best fit the profile
+3. Propose EXACTLY 3 structures that best fit the profile
+4. Terms must be realistic and internally consistent — a barrier of 40% on a low-vol index is unrealistic; a coupon of 3% on a worst-of basket is unrealistic
+5. Payoff scenarios must use actual numbers based on the terms you proposed
 
 Reply ONLY with this JSON (no text outside):
 {
@@ -1203,25 +1204,25 @@ Reply ONLY with this JSON (no text outside):
       "productId": "<id>",
       "productName": "<name>",
       "productIcon": "<icon>",
-      "rationale": "<2-3 sentences>",
+      "rationale": "<2-3 sentences explaining why this structure fits this client profile and these underlyings>",
       "underlying": {
         "suggested": ["<ticker from client list>"],
         "type": "<Index/Single Stock/Basket/Commodity/ETF>",
-        "rationale": "<brief>"
+        "rationale": "<why this underlying fits the structure>"
       },
       "terms": {
-        "maturity": "<e.g. 18 months>",
+        "maturity": "<e.g. 24 months>",
         "strike": "<e.g. 100%>",
         "barrier": "<e.g. 60% or N/A>",
-        "coupon": "<e.g. 8% p.a. or N/A>",
-        "participation": "<e.g. 100% upside or N/A>",
-        "protection": "<e.g. 100% or N/A>",
+        "coupon": "<e.g. 7.5% p.a. or N/A>",
+        "participation": "<e.g. 120% upside or N/A>",
+        "protection": "<e.g. 100% at maturity or N/A>",
         "observationFrequency": "<e.g. quarterly or N/A>"
       },
       "payoff": {
-        "bull": "<outcome if underlying rises>",
-        "flat": "<outcome if underlying is flat>",
-        "bear": "<outcome if underlying falls>"
+        "bull": "<concrete outcome with numbers, e.g. 'Underlying +20%: early redemption at month 12 + 7.5% coupon = 107.5%'>",
+        "flat": "<concrete outcome with numbers>",
+        "bear": "<concrete outcome with numbers, including barrier breach scenario if applicable>"
       },
       "riskLevel": "<low|medium-low|medium|medium-high|high>",
       "category": "<Income|Protection|Growth>"
@@ -1712,7 +1713,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -2044,7 +2045,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
