@@ -961,20 +961,20 @@ export default function App() {
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [catFilter, setCatFilter] = useState("All");
-  const [riskAppetite, setRiskAppetite] = useState("");
-  const [horizon, setHorizon] = useState("");
-  const [objective, setObjective] = useState("");
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [riskAppetite, setRiskAppetite] = useState(() => { try { return localStorage.getItem("sai_riskAppetite") || ""; } catch { return ""; } });
+  const [horizon, setHorizon] = useState(() => { try { return localStorage.getItem("sai_horizon") || ""; } catch { return ""; } });
+  const [objective, setObjective] = useState(() => { try { return localStorage.getItem("sai_objective") || ""; } catch { return ""; } });
+  const [selectedProductIds, setSelectedProductIds] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_selectedProductIds") || "[]"); } catch { return []; } });
   const [underlyingInput, setUnderlyingInput] = useState("");
-  const [underlyings, setUnderlyings] = useState([]);
-  const [proposals, setProposals] = useState([]);
+  const [underlyings, setUnderlyings] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyings") || "[]"); } catch { return []; } });
+  const [proposals, setProposals] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_proposals") || "[]"); } catch { return []; } });
   const [loading, setLoading] = useState(false);
   const [isinLoading, setIsinLoading] = useState({});
-  const [isinResults, setIsinResults] = useState({});
-  const [isinUsedIndex, setIsinUsedIndex] = useState(null); // index (0|1|2) that consumed ISIN search this batch
-  const [underlyingAnalysis, setUnderlyingAnalysis] = useState({});
+  const [isinResults, setIsinResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_isinResults") || "{}"); } catch { return {}; } });
+  const [isinUsedIndex, setIsinUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_isinUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
+  const [underlyingAnalysis, setUnderlyingAnalysis] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyingAnalysis") || "{}"); } catch { return {}; } });
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
-  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(null);
+  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_underlyingAnalysisUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [compareSelected, setCompareSelected] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -999,6 +999,22 @@ export default function App() {
 }
 
   React.useEffect(() => { refreshUsage(); }, [user?.email]);
+
+  // Persist generator state to localStorage
+  React.useEffect(() => { try { localStorage.setItem("sai_proposals", JSON.stringify(proposals)); } catch {} }, [proposals]);
+  React.useEffect(() => { try { localStorage.setItem("sai_isinResults", JSON.stringify(isinResults)); } catch {} }, [isinResults]);
+  React.useEffect(() => { try { localStorage.setItem("sai_isinUsedIndex", JSON.stringify(isinUsedIndex)); } catch {} }, [isinUsedIndex]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysis", JSON.stringify(underlyingAnalysis)); } catch {} }, [underlyingAnalysis]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysisUsedIndex", JSON.stringify(underlyingAnalysisUsedIndex)); } catch {} }, [underlyingAnalysisUsedIndex]);
+  React.useEffect(() => { try { localStorage.setItem("sai_riskAppetite", riskAppetite); } catch {} }, [riskAppetite]);
+  React.useEffect(() => { try { localStorage.setItem("sai_horizon", horizon); } catch {} }, [horizon]);
+  React.useEffect(() => { try { localStorage.setItem("sai_objective", objective); } catch {} }, [objective]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyings", JSON.stringify(underlyings)); } catch {} }, [underlyings]);
+  React.useEffect(() => { try { localStorage.setItem("sai_selectedProductIds", JSON.stringify(selectedProductIds)); } catch {} }, [selectedProductIds]);
+
+  function clearSaiStorage() {
+    ["sai_proposals","sai_isinResults","sai_isinUsedIndex","sai_underlyingAnalysis","sai_underlyingAnalysisUsedIndex","sai_riskAppetite","sai_horizon","sai_objective","sai_underlyings","sai_selectedProductIds"].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  }
   const isPro = user?.plan === "pro";
   const isRetail = user?.plan === "retail";
   const canSearchISIN = isPro || isRetail;
@@ -1328,7 +1344,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session?.access_token },
-        body: JSON.stringify({ prompt, useWebSearch: false, skipUsage: true })
+        body: JSON.stringify({ prompt, useWebSearch: false })
       });
       const data = await res.json();
       const rawText = data.content?.map(b => b.text || '').join('') || '';
@@ -1696,7 +1712,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -2028,7 +2044,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
@@ -2420,10 +2436,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
               {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
             </button>
           )}
-          {onAnalyzeUnderlying && underlyingAnalysisLocked && (
-            <span style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>🔒 Analisi già usata su altra struttura</span>
-          )}
-          {canSearchISIN && !isinLocked && !isinResults && (
+          {canSearchISIN && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
               {isinLoading ? "⏳ Ricerca..." : "🔍 Cerca ISIN Euronext"}
             </button>
