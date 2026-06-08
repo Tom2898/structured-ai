@@ -64,24 +64,25 @@ const PLANS = [
   {
     id: "retail",
     name: "Retail",
-    priceMonthly: "€19.90", priceAnnual: "€17.90", period: "/mese",
+    priceMonthly: "€29.90", priceAnnual: "€24.90", period: "/mese",
     proposalLimit: 20,
     features: [
-      "100 proposte/mese",
+      "20 proposte/mese",
       "Tutti i 12 prodotti",
       "Export PDF",
       "Caratteristiche del sottostante",
       "🔍 Ricerca ISIN Euronext reali",
+      "📋 5 analisi ISIN/mese",
     ],
     featuresExcluded: [
       "Confronto strutture",
     ],
-    annualNote: "Fatturato €214.80/anno",
+    annualNote: "Fatturato €298.80/anno",
     cta: "Inizia con Retail",
     highlight: false,
     comingSoon: false,
-    priceId: "price_1TbRXCQk0TtLlDLRAIVkTBeo",
-    priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho",
+    priceId: "price_1Tg9OeQk0TtLlDLRTZMpf81u",
+    priceIdAnnual: "price_1Tg9OMQk0TtLlDLRGL2saBJt",
   },
   {
     id: "pro-retail",
@@ -876,7 +877,7 @@ export default function App() {
           billingInterval = subData.billing_interval || "month";
         }
         // Any non-active status -> free
-        return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
+        return { id: sessionUser.id, name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
       }
 
       // No row at all — fall back to auth metadata only in this case
@@ -886,7 +887,7 @@ export default function App() {
     } catch (_) {
       plan = "free";
     }
-    return { name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
+    return { id: sessionUser.id, name, email: sessionUser.email, initials, plan, cancelAtPeriodEnd, cancelAt, billingInterval };
   }
 
   // Restore session on page load / refresh, and handle Stripe success redirect
@@ -953,6 +954,13 @@ export default function App() {
   const [tab, setTab] = useState("generator");
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [viewingHistory, setViewingHistory] = useState(null);
+  // ── ISIN Analysis tab state ───────────────────────────────────────────────
+  const [isinAnalysisInput, setIsinAnalysisInput] = useState("");
+  const [isinAnalysisLoading, setIsinAnalysisLoading] = useState(false);
+  const [isinAnalysisResult, setIsinAnalysisResult] = useState(() => { try { return JSON.parse(sessionStorage.getItem("sai_isinAnalysis") || "null"); } catch { return null; } });
+  const [isinAnalysisError, setIsinAnalysisError] = useState("");
+  const [isinAnalysisCount, setIsinAnalysisCount] = useState(0);
+  const ISIN_ANALYSIS_LIMIT = 5;
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
   const [switchAnnualMsg, setSwitchAnnualMsg] = useState("");
@@ -961,20 +969,21 @@ export default function App() {
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [catFilter, setCatFilter] = useState("All");
-  const [riskAppetite, setRiskAppetite] = useState("");
-  const [horizon, setHorizon] = useState("");
-  const [objective, setObjective] = useState("");
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [riskAppetite, setRiskAppetite] = useState(() => { try { return localStorage.getItem("sai_riskAppetite") || ""; } catch { return ""; } });
+  const [horizon, setHorizon] = useState(() => { try { return localStorage.getItem("sai_horizon") || ""; } catch { return ""; } });
+  const [objective, setObjective] = useState(() => { try { return localStorage.getItem("sai_objective") || ""; } catch { return ""; } });
+  const [selectedProductIds, setSelectedProductIds] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_selectedProductIds") || "[]"); } catch { return []; } });
   const [underlyingInput, setUnderlyingInput] = useState("");
-  const [underlyings, setUnderlyings] = useState([]);
-  const [proposals, setProposals] = useState([]);
+  const [underlyings, setUnderlyings] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyings") || "[]"); } catch { return []; } });
+  const [proposals, setProposals] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_proposals") || "[]"); } catch { return []; } });
   const [loading, setLoading] = useState(false);
   const [isinLoading, setIsinLoading] = useState({});
-  const [isinResults, setIsinResults] = useState({});
-  const [isinUsedIndex, setIsinUsedIndex] = useState(null); // index (0|1|2) that consumed ISIN search this batch
-  const [underlyingAnalysis, setUnderlyingAnalysis] = useState({});
+  const [isinResults, setIsinResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_isinResults") || "{}"); } catch { return {}; } });
+  const [isinUsedIndex, setIsinUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_isinUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
+  const isinLockRef = React.useRef(false); // synchronous lock to prevent race condition
+  const [underlyingAnalysis, setUnderlyingAnalysis] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyingAnalysis") || "{}"); } catch { return {}; } });
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
-  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(null);
+  const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_underlyingAnalysisUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [compareSelected, setCompareSelected] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -999,9 +1008,177 @@ export default function App() {
 }
 
   React.useEffect(() => { refreshUsage(); }, [user?.email]);
+  React.useEffect(() => { try { localStorage.setItem("sai_proposals", JSON.stringify(proposals)); } catch {} }, [proposals]);
+  React.useEffect(() => { try { localStorage.setItem("sai_isinResults", JSON.stringify(isinResults)); } catch {} }, [isinResults]);
+  React.useEffect(() => { try { localStorage.setItem("sai_isinUsedIndex", JSON.stringify(isinUsedIndex)); } catch {} }, [isinUsedIndex]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysis", JSON.stringify(underlyingAnalysis)); } catch {} }, [underlyingAnalysis]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyingAnalysisUsedIndex", JSON.stringify(underlyingAnalysisUsedIndex)); } catch {} }, [underlyingAnalysisUsedIndex]);
+  React.useEffect(() => { try { localStorage.setItem("sai_riskAppetite", riskAppetite); } catch {} }, [riskAppetite]);
+  React.useEffect(() => { try { localStorage.setItem("sai_horizon", horizon); } catch {} }, [horizon]);
+  React.useEffect(() => { try { localStorage.setItem("sai_objective", objective); } catch {} }, [objective]);
+  React.useEffect(() => { try { localStorage.setItem("sai_underlyings", JSON.stringify(underlyings)); } catch {} }, [underlyings]);
+  React.useEffect(() => { try { localStorage.setItem("sai_selectedProductIds", JSON.stringify(selectedProductIds)); } catch {} }, [selectedProductIds]);
+  React.useEffect(() => { try { sessionStorage.setItem("sai_isinAnalysis", JSON.stringify(isinAnalysisResult)); } catch {} }, [isinAnalysisResult]);
+
   const isPro = user?.plan === "pro";
   const isRetail = user?.plan === "retail";
   const canSearchISIN = isPro || isRetail;
+  const isinAnalysisRemaining = ISIN_ANALYSIS_LIMIT - isinAnalysisCount;
+
+  // Fetch ISIN analysis count from Supabase
+  React.useEffect(() => {
+    if (!user || !isRetail) return;
+    supabase.from('subscriptions').select('isin_analysis_count, isin_analysis_reset_at').eq('user_id', user.id).single()
+      .then(({ data }) => {
+        if (!data) return;
+        const now = new Date();
+        const resetAt = data.isin_analysis_reset_at ? new Date(data.isin_analysis_reset_at) : new Date(0);
+        const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
+        setIsinAnalysisCount(isNewMonth ? 0 : (data.isin_analysis_count || 0));
+      });
+  }, [user, isRetail]);
+
+  function clearSaiStorage() { ["sai_proposals","sai_isinResults","sai_isinUsedIndex","sai_underlyingAnalysis","sai_underlyingAnalysisUsedIndex","sai_riskAppetite","sai_horizon","sai_objective","sai_underlyings","sai_selectedProductIds"].forEach(k => { try { localStorage.removeItem(k); } catch {} }); }
+
+  async function handleIsinAnalysis() {
+    const isin = isinAnalysisInput.trim().toUpperCase();
+    if (!isin) return;
+    if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin)) { setIsinAnalysisError("Formato ISIN non valido. Esempio: XS1234567890"); return; }
+    if (!isRetail && !isPro) { setIsinAnalysisError("Questa funzione è disponibile per i piani Retail e Pro."); return; }
+    if (isRetail && isinAnalysisCount >= ISIN_ANALYSIS_LIMIT) { setIsinAnalysisError("Hai esaurito le 5 analisi ISIN disponibili questo mese."); return; }
+
+    setIsinAnalysisLoading(true);
+    setIsinAnalysisError("");
+    setIsinAnalysisResult(null);
+
+    // Optimistically increment counter immediately
+    if (isRetail) setIsinAnalysisCount(prev => prev + 1);
+
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+
+      // Step 1: OpenFIGI
+      let figiData = null;
+      try {
+        const figiRes = await fetch("/api/isin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
+          body: JSON.stringify({ isin })
+        });
+        if (figiRes.ok) figiData = await figiRes.json();
+      } catch {}
+
+      // Step 2: CED — scheda principale + barriere + date rilevamento
+      let cedData = null;
+      try {
+        const cedRes = await fetch("/api/ced", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isin })
+        });
+        if (cedRes.ok) cedData = await cedRes.json();
+      } catch {}
+
+      const figiContext = figiData && !figiData.error ? `
+DATI IDENTIFICATIVI (OpenFIGI):
+- Nome: ${figiData.name || "N/D"}
+- Mercato: ${figiData.exchCode || "N/D"}
+- Tipo: ${figiData.securityType || ""} ${figiData.securityType2 ? "/ " + figiData.securityType2 : ""}
+` : "";
+
+      const cedContext = cedData && !cedData.error ? `
+DATI DA CERTIFICATIEDERIVATI.IT:
+
+--- SCHEDA PRODOTTO (sottostanti, strike, emittente, date) ---
+${cedData.scheda || "Non disponibile"}
+
+--- BARRIERE ---
+${cedData.barriere || "Non disponibile"}
+
+--- DATE RILEVAMENTO / CEDOLE ---
+${cedData.rilevamento || "Non disponibile"}
+` : "";
+
+      const prompt = `Analizza il certificato strutturato ISIN: ${isin}
+${figiContext}
+${cedContext}
+ISTRUZIONI:
+- Usa i dati sopra come fonte primaria — sono dati reali estratti da CED e OpenFIGI
+- Se qualche campo manca nei dati sopra, cerca online: "${isin} barriera cedola emittente"
+- NON scrivere "Dato non disponibile" se il dato è presente nei dati sopra
+
+Fornisci un'analisi completa includendo:
+
+1. INFORMAZIONI GENERALI
+- Nome completo del prodotto
+- Emittente (es. Societe Generale, BNP Paribas, ecc.)
+- ISIN: ${isin}
+- Tipo di prodotto (Autocall, Phoenix, BRC, ecc.)
+- Mercato di quotazione
+- Data di emissione e scadenza
+
+2. SOTTOSTANTE/I
+- Nome e ticker di ogni sottostante
+- Valore strike (livello iniziale)
+- Barriera di protezione del capitale (%)
+- Barriera cedola (se presente, %)
+
+3. STRUTTURA CEDOLE
+- Importo cedola (% o valore assoluto)
+- Frequenza pagamento (mensile, trimestrale, semestrale, annuale)
+- Tipo cedola (condizionata, incondizionata, memory)
+- Schedule completo delle date di osservazione
+
+4. MECCANISMO AUTOCALL
+- Livello di rimborso anticipato (% dello strike)
+- Date di osservazione autocall
+- Condizioni per il rimborso anticipato
+
+5. PROTEZIONE DEL CAPITALE
+- Tipo di protezione (condizionata/incondizionata)
+- Livello barriera finale
+- Tipo barriera (europea/americana)
+
+6. SCENARI DI PAYOFF
+- Scenario Bull: cosa succede se il sottostante sale
+- Scenario Flat: cosa succede se il sottostante rimane stabile
+- Scenario Bear: cosa succede se il sottostante scende sotto barriera
+
+7. VALUTAZIONE
+- Profilo di rischio (basso/medio/alto)
+- Investitore ideale
+- Punti di forza
+- Rischi principali
+
+IMPORTANTE: Usa esclusivamente dati trovati online. Se non trovi informazioni per alcune sezioni, indicalo chiaramente con "Dato non disponibile".`;
+
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}`, "x-turnstile-token": turnstileToken || "" },
+        body: JSON.stringify({ prompt, useWebSearch: true })
+      });
+      const data = await res.json();
+      if (data.error) { setIsinAnalysisError(data.error); return; }
+
+      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+      setIsinAnalysisResult({ isin, text, timestamp: new Date().toISOString() });
+    } catch (err) {
+      setIsinAnalysisError("Errore di connessione. Riprova.");
+    } finally {
+      setIsinAnalysisLoading(false);
+      // Always sync count from Supabase at the end
+      if (isRetail) {
+        supabase.from('subscriptions').select('isin_analysis_count, isin_analysis_reset_at').eq('user_id', user.id).single()
+          .then(({ data }) => {
+            if (!data) return;
+            const now = new Date();
+            const resetAt = data.isin_analysis_reset_at ? new Date(data.isin_analysis_reset_at) : new Date(0);
+            const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
+            setIsinAnalysisCount(isNewMonth ? 0 : (data.isin_analysis_count || 0));
+          });
+      }
+    }
+  }
 
   // Reset product selection when objective changes
   function handleObjectiveChange(val) {
@@ -1013,10 +1190,11 @@ async function handleStripeCheckout(plan, forceAnnual = null) {
   const selectedPriceId = isAnnual && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId;
   if (!selectedPriceId) return false;
   try {
+    const { data: { session: checkoutSession } } = await supabase.auth.getSession();
     const res = await fetch("/api/checkout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: selectedPriceId, email: user?.email || authEmail || "" })
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${checkoutSession?.access_token}` },
+      body: JSON.stringify({ priceId: selectedPriceId })
     });
     const data = await res.json();
     if (data.url) {
@@ -1152,6 +1330,8 @@ console.log("signup token:", data.session?.access_token);
     setLoading(true);
     setProposals([]);
     setIsinResults({});
+    setIsinUsedIndex(null);
+    isinLockRef.current = null;
     setCompareSelected([]);
 
     // Build product constraint
@@ -1161,22 +1341,44 @@ console.log("signup token:", data.session?.access_token);
 
     const productListStr = allowedProducts.map(p => `  - ${p.id}: ${p.name} (${p.category}, rischio ${RISK_COLOR[p.risk].label})`).join("\n");
 
-    const prompt = `You are a structured products expert at a private bank.
+    const prompt = `You are a structured products expert at a European private bank with deep knowledge of certificates listed on Euronext Milan and Borsa Italiana.
+
 A client has the following profile:
 - Risk appetite: ${riskAppetite}
 - Investment horizon: ${horizon}
 - Investment objective: ${objective}
 
-AVAILABLE UNDERLYINGS — the client has selected these and ONLY these:
+AVAILABLE UNDERLYINGS — use ONLY these:
 ${underlyings.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}
-
+${underlyings.length > 1 ? `
+BASKET INSTRUCTION: The client selected ${underlyings.length} underlyings. You MUST:
+- Propose at least 1 structure using ALL ${underlyings.length} as a basket (worst-of or equal-weight)
+- Remaining proposals can use a subset or single underlying if it genuinely fits better
+- For basket proposals set "type" to "Basket" and include all tickers in "suggested"
+- Worst-of basket structures (worstof, autocall) are especially suitable for baskets of 2-4 stocks
+` : ""}
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
+
+REALISM RULES — terms must reflect actual market conditions for European structured products 2024-2025:
+- Autocall/Phoenix barriers: 50-70%; coupons 4-12% p.a. depending on underlying volatility
+- Capital Protected Notes: participation 80-130%; protection 100% at maturity only
+- Reverse Convertible: coupons 6-15% p.a.; strike 100%; no barrier
+- Barrier Reverse Conv.: barriers 50-75%; coupons 5-12% p.a.
+- Bonus Certificate: bonus level 110-140%; barriers 50-70% American/continuous
+- Express Certificate: step-up premium 5-15% per observation; annual observations
+- Worst-of Autocall: coupons 8-18% p.a. due to basket risk; barriers 50-65%
+- Outperformance: participation 120-200% above strike; no downside protection
+- Twin Win: participation 100-150% both directions; barrier 50-70%
+- Maturities: 12, 18, 24, 36 months — match to client horizon
+- High-vol underlyings → lower barriers, higher coupons; low-vol index → higher barriers, lower coupons
+- Payoff scenarios must use actual numbers based on the terms proposed
 
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
-3. Propose EXACTLY 3 structures from the allowed list that best fit the profile
+3. Propose EXACTLY 3 structures that best fit the profile
+4. Terms must be realistic and internally consistent
 
 Reply ONLY with this JSON (no text outside):
 {
@@ -1186,25 +1388,25 @@ Reply ONLY with this JSON (no text outside):
       "productId": "<id>",
       "productName": "<name>",
       "productIcon": "<icon>",
-      "rationale": "<2-3 sentences>",
+      "rationale": "<2-3 sentences explaining why this fits this client and these underlyings>",
       "underlying": {
         "suggested": ["<ticker from client list>"],
         "type": "<Index/Single Stock/Basket/Commodity/ETF>",
-        "rationale": "<brief>"
+        "rationale": "<why this underlying fits the structure>"
       },
       "terms": {
-        "maturity": "<e.g. 18 months>",
+        "maturity": "<e.g. 24 months>",
         "strike": "<e.g. 100%>",
         "barrier": "<e.g. 60% or N/A>",
-        "coupon": "<e.g. 8% p.a. or N/A>",
-        "participation": "<e.g. 100% upside or N/A>",
-        "protection": "<e.g. 100% or N/A>",
+        "coupon": "<e.g. 7.5% p.a. or N/A>",
+        "participation": "<e.g. 120% upside or N/A>",
+        "protection": "<e.g. 100% at maturity or N/A>",
         "observationFrequency": "<e.g. quarterly or N/A>"
       },
       "payoff": {
-        "bull": "<outcome if underlying rises>",
-        "flat": "<outcome if underlying is flat>",
-        "bear": "<outcome if underlying falls>"
+        "bull": "<concrete outcome with numbers, e.g. Underlying +20%: early redemption month 12 + 7.5% coupon = 107.5%>",
+        "flat": "<concrete outcome with numbers>",
+        "bear": "<concrete outcome with numbers including barrier breach scenario if applicable>"
       },
       "riskLevel": "<low|medium-low|medium|medium-high|high>",
       "category": "<Income|Protection|Growth>"
@@ -1219,6 +1421,11 @@ Reply ONLY with this JSON (no text outside):
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "x-turnstile-token": turnstileToken || "" },
         body: JSON.stringify({ prompt })
       });
+      // Reset Turnstile token after use (it's one-time)
+      setTurnstileToken(null);
+      if (turnstileWidgetId.current !== null && window.turnstile) {
+        try { window.turnstile.reset(turnstileWidgetId.current); } catch (_) {}
+      }
       if (res.status === 429) {
         setShowUpgradeModal(true);
         setLoading(false);
@@ -1242,6 +1449,12 @@ Reply ONLY with this JSON (no text outside):
 
   async function searchISIN(proposal, index) {
     if (!canSearchISIN) { setShowUpgradeModal(true); return; }
+    // Synchronous lock via ref - blocks concurrent clicks before React re-renders
+    // isinLockRef.current holds the locked index (or null). Never reset once set.
+    if (typeof index === "number") {
+      if (isinLockRef.current !== null && isinLockRef.current !== index) return;
+      if (isinLockRef.current === null) isinLockRef.current = index;
+    }
     // Only one ISIN search allowed per batch of 3 proposals (generator tab)
     // History tab uses string keys like "h_...", so we only restrict numeric indices
     if (typeof index === "number" && isinUsedIndex !== null && isinUsedIndex !== index) return;
@@ -1288,11 +1501,30 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": turnstileToken || "" },
-        body: JSON.stringify({ prompt, useWebSearch: true })
-      });
+      let res, attempts = 0;
+      while (attempts < 4) {
+        // Get fresh token for each attempt (Turnstile tokens are one-time use)
+        const currentToken = turnstileToken || "";
+        res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": currentToken },
+          body: JSON.stringify({ prompt, useWebSearch: true })
+        });
+        // Reset Turnstile after use
+        setTurnstileToken(null);
+        if (turnstileWidgetId.current !== null && window.turnstile) {
+          try { window.turnstile.reset(turnstileWidgetId.current); } catch (_) {}
+        }
+        if (res.status !== 429) break;
+        attempts++;
+        if (attempts < 4) {
+          const body = await res.clone().json().catch(() => ({}));
+          const waitMs = body.retryAfter ? body.retryAfter * 1000 : attempts * 3000;
+          // Wait for new Turnstile token before retrying
+          await new Promise(r => setTimeout(r, waitMs));
+        }
+      }
+      if (res.status === 429) throw new Error("rate_limit");
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
       // Grab the LAST text block (final answer after web search)
@@ -1311,7 +1543,10 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
           setIsinResults(prev => ({ ...prev, [index]: { isins: [], note: "Errore nel parsing dei risultati." } }));
         }
       }
-    } catch { setIsinResults(prev => ({ ...prev, [index]: { error: true } })); }
+    } catch (err) {
+      const isRateLimit = err?.message === "rate_limit";
+      setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: isRateLimit } }));
+    }
     setIsinLoading(prev => ({ ...prev, [index]: false }));
   }
 
@@ -1327,7 +1562,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session?.access_token },
-        body: JSON.stringify({ prompt, useWebSearch: false })
+        body: JSON.stringify({ prompt, useWebSearch: false, skipUsage: true })
       });
       const data = await res.json();
       const rawText = data.content?.map(b => b.text || '').join('') || '';
@@ -1352,12 +1587,10 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
   }
 
   function handlePrintPDF() {
-    if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
     setTimeout(() => window.print(), 100);
   }
 
   function exportSinglePDF(proposal) {
-    if (!isPro && !isRetail) { setShowUpgradeModal(true); return; }
     const risk = RISK_COLOR[proposal.riskLevel] || RISK_COLOR["medium"];
     const cat = CAT_COLOR[proposal.category] || CAT_COLOR["Income"];
     const t = proposal.terms || {};
@@ -1464,7 +1697,7 @@ ${proposal.payoff ? `<div class="section">
             { icon: "🧠", title: "Basato sull'AI", sub: "Abbina il prodotto giusto al profilo" },
             { icon: "📊", title: "Term sheet completi", sub: "Barriera, cedola, payoff, sottostante" },
             { icon: "🗂", title: "Selezione guidata", sub: "Strutture filtrate per obiettivo" },
-            { icon: "🔍", title: "ISIN Euronext (Pro)", sub: "Certificati reali con ISIN" },
+            { icon: "🔍", title: "ISIN Euronext (Retail/Pro)", sub: "Certificati reali con ISIN" },
           ].map(f => (
             <div className="feature-item" key={f.title}>
               <div className="feature-icon">{f.icon}</div>
@@ -1481,7 +1714,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="billing-toggle-thumb" />
             </button>
             <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-            {billingAnnual && <span className="billing-save-badge">Retail: €17.90/mese · Risparmia €24/anno</span>}
+            {billingAnnual && <span className="billing-save-badge">Retail: €24.90/mese · Risparmia €60/anno</span>}
           </div>
           <div className="plans-grid">
 {PLANS.map(plan => {
@@ -1625,7 +1858,7 @@ ${proposal.payoff ? `<div class="section">
                         <div style={{ width:14, height:14, borderRadius:"50%", background:"#fff", position:"absolute", top:3, left:3, transition:"transform .2s", transform: authBillingAnnual ? "translateX(16px)" : "none", boxShadow:"0 1px 3px rgba(0,0,0,.2)" }} />
                       </button>
                       <span style={{ fontSize:11, color: authBillingAnnual ? "var(--text)" : "var(--muted)", cursor:"pointer" }} onClick={() => setAuthBillingAnnual(true)}>Annuale</span>
-                      {authBillingAnnual && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:99, background:"#e8f5e9", color:"#2e7d32", border:"1px solid rgba(46,125,50,.2)" }}>Retail: €17.90/mese</span>}
+                      {authBillingAnnual && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:99, background:"#e8f5e9", color:"#2e7d32", border:"1px solid rgba(46,125,50,.2)" }}>Retail: €24.90/mese</span>}
                     </div>
                     <div className="plan-opts">
                       {PLANS.map(p => {
@@ -1686,7 +1919,7 @@ ${proposal.payoff ? `<div class="section">
         </div>
         <div className="topnav-tabs" style={{ display:"flex", alignItems:"center", gap:"1rem" }}>
           <div style={{ width: 16 }} />
-          {[["generator","Genera"],["catalog","Prodotti"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
+          {[["generator","Genera"],["isin-analysis","Analisi ISIN"],["catalog","Prodotti"],["dashboard","Dashboard"],["profile","Profilo"]].map(([t, label]) => (
             <button key={t} className={`topnav-tab${tab === t ? " active" : ""}`} onClick={() => { setTab(t); setViewingHistory(null); }}>{label}</button>
           ))}
         </div>
@@ -1697,7 +1930,7 @@ ${proposal.payoff ? `<div class="section">
             <div style={{ fontSize: 12, fontWeight: 500 }}>{user.name}</div>
             <span className={`plan-pill${user.plan === "free" ? " free" : user.plan === "pro" ? " pro" : user.plan === "retail" ? " retail" : ""}`}>{user.plan.toUpperCase()}</span>
           </div>
-          <button className="logout-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
+          <button className="logout-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>Esci</button>
         </div>
       </nav>
 
@@ -1709,6 +1942,11 @@ ${proposal.payoff ? `<div class="section">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
           ), "Genera"],
+          ["isin-analysis", (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          ), "ISIN"],
           ["catalog", (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -1771,6 +2009,100 @@ ${proposal.payoff ? `<div class="section">
       </div>
       <div className="main">
 
+        {/* ISIN ANALYSIS */}
+        {tab === "isin-analysis" && (
+          <>
+            <div className="page-title">Analisi ISIN</div>
+            <div className="page-sub">Inserisci il codice ISIN di un certificato strutturato per ottenere un'analisi completa generata dall'AI.</div>
+
+            {!canSearchISIN ? (
+              <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:"2.5rem", textAlign:"center", maxWidth:520, margin:"2rem auto" }}>
+                <div style={{ fontSize:32, marginBottom:16 }}>🔍</div>
+                <div style={{ fontSize:16, fontWeight:500, color:"var(--text)", marginBottom:8 }}>Funzione Retail / Pro</div>
+                <div style={{ fontSize:13, color:"var(--muted)", marginBottom:24, lineHeight:1.7 }}>L'analisi ISIN è disponibile a partire dal piano Retail. Ottieni 5 analisi al mese con dati reali su schedule, cedole, barriere e sottostanti.</div>
+                <button className="btn-primary" onClick={() => setShowUpgradeModal(true)}>Passa a Retail →</button>
+              </div>
+            ) : (
+              <div style={{ maxWidth: 720, margin: "0 auto" }}>
+
+                {/* Counter badge for retail */}
+                {isRetail && (
+                  <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+                    <span style={{ fontSize:11, padding:"3px 10px", borderRadius:99, background: isinAnalysisRemaining > 0 ? "var(--accent-light)" : "#fff3e0", color: isinAnalysisRemaining > 0 ? "var(--accent)" : "#e65100", border:`1px solid ${isinAnalysisRemaining > 0 ? "rgba(26,58,42,0.15)" : "rgba(230,81,0,0.3)"}` }}>
+                      {isinAnalysisRemaining > 0 ? `${isinAnalysisRemaining} analisi rimanenti questo mese` : "Limite mensile raggiunto"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Input */}
+                <div style={{ display:"flex", gap:10, marginBottom:20 }}>
+                  <input
+                    style={{ flex:1, padding:"12px 16px", border:"1px solid var(--border-md)", borderRadius:"var(--radius-sm)", fontFamily:"'DM Mono', monospace", fontSize:14, background:"var(--surface)", color:"var(--text)", outline:"none", letterSpacing:"0.05em" }}
+                    placeholder="es. XS1234567890"
+                    value={isinAnalysisInput}
+                    onChange={e => { setIsinAnalysisInput(e.target.value.toUpperCase()); setIsinAnalysisError(""); }}
+                    onKeyDown={e => e.key === "Enter" && handleIsinAnalysis()}
+                    maxLength={12}
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={handleIsinAnalysis}
+                    disabled={isinAnalysisLoading || !isinAnalysisInput.trim() || (isRetail && isinAnalysisRemaining <= 0)}
+                    style={{ whiteSpace:"nowrap", minWidth:120 }}
+                  >
+                    {isinAnalysisLoading ? "Analisi in corso..." : "Analizza →"}
+                  </button>
+                </div>
+
+                {isinAnalysisError && (
+                  <div style={{ fontSize:12, color:"#c62828", marginBottom:16, padding:"10px 14px", background:"#fff5f5", borderRadius:"var(--radius-sm)", border:"1px solid rgba(198,40,40,0.2)" }}>
+                    {isinAnalysisError}
+                  </div>
+                )}
+
+                {isinAnalysisLoading && (
+                  <div style={{ textAlign:"center", padding:"3rem", color:"var(--muted)", fontSize:13 }}>
+                    <div style={{ fontSize:24, marginBottom:12 }}>🔍</div>
+                    Ricerca in corso su Euronext e fonti pubbliche...
+                  </div>
+                )}
+
+                {/* Result */}
+                {isinAnalysisResult && !isinAnalysisLoading && (
+                  <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:"2rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                      <div>
+                        <span style={{ fontSize:10, letterSpacing:"0.1em", color:"var(--muted)" }}>ISIN ANALIZZATO</span>
+                        <div style={{ fontSize:18, fontWeight:600, color:"var(--accent)", fontFamily:"'DM Mono', monospace", marginTop:2 }}>{isinAnalysisResult.isin}</div>
+                      </div>
+                      <span style={{ fontSize:10, color:"var(--muted)" }}>{new Date(isinAnalysisResult.timestamp).toLocaleString("it-IT")}</span>
+                    </div>
+                    <div style={{ borderTop:"1px solid var(--border)", paddingTop:20 }}>
+                      {isinAnalysisResult.text.split("\n").map((line, i) => {
+                        if (!line.trim()) return <div key={i} style={{ height:8 }} />;
+                        const isHeader = /^\d+\.|^[A-Z\s\/]{4,}$/.test(line.trim()) || line.startsWith("**");
+                        const clean = line.replace(/\*\*/g, "");
+                        return (
+                          <div key={i} style={{
+                            fontSize: isHeader ? 11 : 13,
+                            fontWeight: isHeader ? 600 : 400,
+                            color: isHeader ? "var(--accent)" : "var(--text)",
+                            letterSpacing: isHeader ? "0.08em" : 0,
+                            marginBottom: isHeader ? 6 : 4,
+                            marginTop: isHeader ? 16 : 0,
+                            lineHeight: 1.7,
+                          }}>{clean}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </>
+        )}
+
         {/* DASHBOARD */}
         {tab === "dashboard" && (
           <>
@@ -1793,14 +2125,14 @@ ${proposal.payoff ? `<div class="section">
                     const retailPlan = PLANS.find(p => p.id === "retail");
                     if (retailPlan?.priceId) handleStripeCheckout(retailPlan, false);
                     else setShowUpgradeModal(true);
-                  }}>Retail mensile — €19.90/mese →</button>
+                  }}>Retail mensile — €29.90/mese →</button>
                   <button className="upgrade-btn" style={{ background: "var(--accent)", opacity: 1, display: "flex", alignItems: "center", gap: 6 }} onClick={() => {
                     const retailPlan = PLANS.find(p => p.id === "retail");
                     if (retailPlan?.priceIdAnnual) handleStripeCheckout(retailPlan, true);
                     else setShowUpgradeModal(true);
                   }}>
-                    Retail annuale — €17.90/mese
-                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "#e8f5e9", color: "#2e7d32", border: "1px solid rgba(46,125,50,0.3)" }}>Risparmia €24</span>
+                    Retail annuale — €24.90/mese
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "#e8f5e9", color: "#2e7d32", border: "1px solid rgba(46,125,50,0.3)" }}>Risparmia €60</span>
                     →
                   </button>
                 </div>
@@ -1891,7 +2223,7 @@ ${proposal.payoff ? `<div class="section">
                     <div style={{ fontSize: 10, letterSpacing: "0.07em", color: "var(--muted)", marginBottom: 10 }}>UPGRADE A RETAIL</div>
                     {/* Mensile */}
                     <div style={{ border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "12px 14px", marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Piano Mensile — €19.90/mese</div>
+                      <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4 }}>Piano Mensile — €29.90/mese</div>
                       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>Fatturato mensilmente, cancella quando vuoi.</div>
                       <button className="profile-upgrade-btn" style={{ marginTop: 0, width: "100%" }} onClick={() => handleStripeCheckout(nextPlan, false)}>
                         Passa a Retail mensile →
@@ -1900,12 +2232,12 @@ ${proposal.payoff ? `<div class="section">
                     {/* Annuale */}
                     <div style={{ border: "1.5px solid var(--accent)", borderRadius: "var(--radius-sm)", padding: "12px 14px", background: "var(--accent-light)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 500 }}>Piano Annuale — €17.90/mese</span>
-                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "#e8f5e9", color: "#2e7d32", border: "1px solid rgba(46,125,50,0.2)" }}>Risparmia €24/anno</span>
+                        <span style={{ fontSize: 11, fontWeight: 500 }}>Piano Annuale — €24.90/mese</span>
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "#e8f5e9", color: "#2e7d32", border: "1px solid rgba(46,125,50,0.2)" }}>Risparmia €60/anno</span>
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>Fatturato €214.80/anno in un'unica soluzione.</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>Fatturato €298.80/anno in un'unica soluzione.</div>
                       <button className="profile-upgrade-btn" style={{ marginTop: 0, width: "100%", background: "var(--accent)" }} onClick={() => handleStripeCheckout(nextPlan, true)}>
-                        Passa a Retail annuale — €214.80/anno →
+                        Passa a Retail annuale — €298.80/anno →
                       </button>
                     </div>
                   </div>
@@ -1925,8 +2257,8 @@ ${proposal.payoff ? `<div class="section">
                 <div className="profile-card">
                   <div className="profile-card-title">Passa al piano annuale</div>
                   <div style={{ fontSize:12, color:"var(--muted)", marginBottom:14, lineHeight:1.7 }}>
-                    Passa alla fatturazione annuale a <strong>€17.90/mese</strong> (€214.80/anno).<br/>
-                    Risparmi <strong>€24/anno</strong> rispetto al mensile. Stripe addebiterà solo la differenza pro-rata per i giorni rimanenti del ciclo attuale.
+                    Passa alla fatturazione annuale a <strong>€24.90/mese</strong> (€298.80/anno).<br/>
+                    Risparmi <strong>€60/anno</strong> rispetto al mensile. Stripe addebiterà solo la differenza pro-rata per i giorni rimanenti del ciclo attuale.
                   </div>
                   {switchAnnualMsg ? (
                     <div style={{ fontSize:12, color: switchAnnualMsg.includes("errore") || switchAnnualMsg.includes("Errore") ? "#c62828" : "var(--accent)", padding:"8px 0" }}>{switchAnnualMsg}</div>
@@ -1938,7 +2270,7 @@ ${proposal.payoff ? `<div class="section">
                         const res = await fetch("/api/switch-to-annual", {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}` },
-                          body: JSON.stringify({ priceIdAnnual: "price_1TbRXiQk0TtLlDLRuRYpb1ho" })
+                          body: JSON.stringify({ priceIdAnnual: "price_1Tg9OMQk0TtLlDLRGL2saBJt" })
                         });
                         const data = await res.json();
                         if (data.success) {
@@ -1950,7 +2282,7 @@ ${proposal.payoff ? `<div class="section">
                       } catch(e) { setSwitchAnnualMsg("Errore di connessione: " + e.message); }
                       setSwitchAnnualLoading(false);
                     }}>
-                      {switchAnnualLoading ? "..." : "Passa ad annuale — €214.80/anno →"}
+                      {switchAnnualLoading ? "..." : "Passa ad annuale — €298.80/anno →"}
                     </button>
                   )}
                 </div>
@@ -2029,7 +2361,7 @@ ${proposal.payoff ? `<div class="section">
 
               <div className="profile-card">
                 <div className="profile-card-title">Sessione</div>
-                <button className="profile-danger-btn" onClick={async () => { await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
+                <button className="profile-danger-btn" onClick={async () => { clearSaiStorage(); await supabase.auth.signOut(); setUser(null); setScreen("landing"); }}>
                   Disconnetti account
                 </button>
               </div>
@@ -2057,7 +2389,7 @@ ${proposal.payoff ? `<div class="section">
               <div className="paywall-banner">
                 <div className="paywall-banner-text">
                   <strong>Hai usato tutte le {proposalLimit} proposte del piano {planInfo?.name}</strong>
-                  <span>{user?.plan === "pro" ? "" : user?.plan === "retail" ? "Passa a Pro per 500 proposte/mese." : "Passa a Retail per 100 proposte/mese."}</span>
+                  <span>{user?.plan === "pro" ? "" : user?.plan === "retail" ? "Passa a Pro per 300 proposte/mese." : "Passa a Retail per 20 proposte/mese."}</span>
                 </div>
                 <button className="upgrade-btn" onClick={() => setShowUpgradeModal(true)}>Upgrade →</button>
               </div>
@@ -2157,9 +2489,9 @@ ${proposal.payoff ? `<div class="section">
                 </div>
 
                 <button className="gen-btn"
-                  disabled={!riskAppetite || !horizon || !objective || underlyings.length === 0 || loading || atLimit}
+                  disabled={!riskAppetite || !horizon || !objective || underlyings.length === 0 || loading || atLimit || !turnstileToken}
                   onClick={generateProposals}>
-                  {loading ? "Analisi in corso..." : atLimit ? "Limite raggiunto" : "Genera 3 strutture"}
+                  {loading ? "Analisi in corso..." : atLimit ? "Limite raggiunto" : !turnstileToken ? "Verifica sicurezza..." : "Genera 3 strutture"}
                 </button>
                 {(!riskAppetite || !horizon || !objective || underlyings.length === 0) && !atLimit && (
                   <div style={{ fontSize:11, color:"var(--muted)", marginTop:6, textAlign:"center" }}>* campi obbligatori</div>
@@ -2323,7 +2655,7 @@ ${proposal.payoff ? `<div class="section">
                   <div className="billing-toggle-thumb" />
                 </button>
                 <span className={`billing-label${billingAnnual ? " active" : ""}`} onClick={() => setBillingAnnual(true)}>Annuale</span>
-                {billingAnnual && <span className="billing-save-badge">Retail: €17.90/mese · Risparmia €24/anno</span>}
+                {billingAnnual && <span className="billing-save-badge">Retail: €24.90/mese · Risparmia €60/anno</span>}
               </div>
               <div className="modal-plans">
                 {PLANS.map(plan => {
@@ -2421,10 +2753,10 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
               {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
             </button>
           )}
-          {!isPro && onToggleCompare && (
-            <button className="compare-toggle-btn" onClick={onUpgrade}>⊞ Confronta <span style={{ fontSize:9, opacity:0.7 }}>PRO</span></button>
+          {onAnalyzeUnderlying && underlyingAnalysisLocked && (
+            <span style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>🔒 Analisi già usata su altra struttura</span>
           )}
-          {canSearchISIN && (
+          {canSearchISIN && !isinLocked && !isinResults && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
               {isinLoading ? "⏳ Ricerca..." : "🔍 Cerca ISIN Euronext"}
             </button>
@@ -2484,7 +2816,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontSize:12 }}>🔍</span>
               <span style={{ fontSize:11, color:"var(--muted)" }}>Certificati simili su Euronext</span>
-              <span className="isin-badge">{isRetail ? "RETAIL" : "PRO"}</span>
+              <span className="isin-badge">{canSearchISIN ? (isRetail ? "RETAIL" : "PRO") : "RETAIL / PRO"}</span>
             </div>
             {!canSearchISIN && <button className="isin-search-btn" onClick={onUpgrade} style={{ fontSize:10, borderColor:"var(--pro)", color:"var(--pro)" }}>Sblocca con Retail/Pro →</button>}
             {canSearchISIN && !isinResults && !isinLoading && !isinLocked && (
@@ -2502,7 +2834,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
           {isinResults && !isinLoading && (
             <div className="isin-results">
               {isinResults.error
-                ? <div style={{ fontSize:11, color:"#c62828" }}>Errore nella ricerca. Riprova.</div>
+                ? <div style={{ fontSize:11, color:"#c62828" }}>{isinResults.rateLimit ? "⏱ Troppe richieste in corso. Riprova tra qualche secondo." : "Errore nella ricerca. Riprova."}</div>
                 : isinResults.isins?.length === 0
                   ? <div style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>{isinResults.note || "Nessun certificato trovato."}</div>
                   : <>
