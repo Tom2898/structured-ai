@@ -815,10 +815,10 @@ export default function App() {
     document.head.appendChild(script);
   }, []);
 
-  // Render invisible Turnstile widget when auth screen is shown
+  // Render invisible Turnstile widget on auth AND app screens
   React.useEffect(() => {
-    if (screen !== "auth") return;
-    // Reset token on each visit to auth screen
+    if (screen !== "auth" && screen !== "app") return;
+    // Reset token on each screen change
     setTurnstileToken(null);
 
     function tryRender() {
@@ -1912,6 +1912,8 @@ ${proposal.payoff ? `<div class="section">
   return (
     <>
       <style>{css}</style>
+      {/* Turnstile invisible widget container — needed for proposal generation */}
+      <div id="turnstile-container" style={{ display: "none" }} />
       <nav className="topnav">
         <div className="topnav-logo">
           <div className="topnav-logo-mark">S</div>
