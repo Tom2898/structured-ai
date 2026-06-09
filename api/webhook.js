@@ -22,7 +22,7 @@ async function buffer(readable) {
 const PLAN_LABELS = { free: 'Free', retail: 'Retail', pro: 'Pro', unlimited: 'Unlimited' };
 const PLAN_PRICES = { free: '€0/mese', retail: '€19.90/mese', pro: '€49/mese', unlimited: '€199/mese' };
 const PLAN_FEATURES = {
-  retail: ['100 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF', 'Ricerca ISIN Euronext reali'],
+  retail: ['20 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF', 'Ricerca ISIN Euronext reali'],
   pro:    ['500 proposte/mese', 'Tutti i 12 prodotti', 'Export PDF con brand', 'Storico proposte', 'Ricerca ISIN Euronext', 'Confronto affiancato'],
   free:   ['3 proposte/mese', 'Accesso base ai prodotti'],
 };
@@ -226,17 +226,39 @@ export default async function handler(req, res) {
       }
     } catch(e) { console.error('Subscription fetch error:', e.message); }
 
-    const { error } = await supabase.from('subscriptions').upsert({
-      email,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      plan: 'retail',
-      status: 'active',
-      billing_interval: billingInterval,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'email' });
+    // Lookup user_id from auth.users by email
+    let userId = null;
+    try {
+      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const match = users?.find(u => u.email === email);
+      userId = match?.id || null;
+    } catch(e) { console.error('User lookup error:', e.message); }
 
-    if (error) console.error('Supabase upsert error:', error.message);
+    if (userId) {
+      // Update existing record by user_id (most reliable key)
+      const { error } = await supabase.from('subscriptions').update({
+        email,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        plan: 'retail',
+        status: 'active',
+        billing_interval: billingInterval,
+        updated_at: new Date().toISOString()
+      }).eq('user_id', userId);
+      if (error) console.error('Supabase update error:', error.message);
+    } else {
+      // Fallback: upsert by email if user not found
+      const { error } = await supabase.from('subscriptions').upsert({
+        email,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        plan: 'retail',
+        status: 'active',
+        billing_interval: billingInterval,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'email' });
+      if (error) console.error('Supabase upsert error:', error.message);
+    }
 
     // Email di benvenuto con piano
     if (email) await sendEmail(email, welcomeEmail(email, 'retail'));
