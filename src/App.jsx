@@ -1475,39 +1475,7 @@ Reply ONLY with this JSON (no text outside):
       ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati già scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
       : "";
 
-    // Build focused search queries for known reliable sources
-    const searchHints = [
-      `site:borsaitaliana.it certificati ${proposal.productName} ${underlying}`,
-      `site:structuredretail.com certificate ${proposal.productName} ${underlying}`,
-      `site:euronext.com structured certificate ${proposal.productName} ${underlying}`,
-      `ISIN certificato "${proposal.productName}" ${underlying} Euronext`,
-    ].join("\n");
-
-    const prompt = `Sei un esperto di certificati strutturati. Cerca su web certificati reali quotati su Euronext Milan (Borsa Italiana) o Euronext con queste caratteristiche:
-
-CARATTERISTICHE CERCATE:
-- Tipo struttura: ${proposal.productName}
-- Sottostante: ${underlying}
-- Barriera indicativa: ${proposal.terms.barrier}
-- Cedola indicativa: ${proposal.terms.coupon}
-- Categoria: ${proposal.category || ""}
-${activeFilter}
-
-FONTI PRIORITARIE da cercare (in questo ordine):
-1. borsaitaliana.it/certificati o finanzaonline.com/certificati
-2. structuredretail.com
-3. it.investing.com/structured-products
-4. Qualsiasi pagina con codice ISIN (formato XS, DE, IT + 10 cifre) e nome emittente
-
-QUERY DI RICERCA SUGGERITE:
-${searchHints}
-
-Dopo la ricerca, estrai tutti i certificati trovati con ISIN reali. Accetta anche corrispondenze parziali (tipo struttura simile o sottostante correlato).
-
-Rispondi SEMPRE e SOLO con questo JSON (nessun testo fuori):
-{"isins":[{"isin":"<codice ISIN reale>","emittente":"<nome emittente>","nome":"<nome prodotto>","scadenza":"<data scadenza>","similarity":"Alta|Media","fonte":"<URL pagina trovata>"}],"note":"<eventuale commento>"}
-
-Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "Media". Non restituire mai un array vuoto se hai trovato qualcosa di correlato.`;
+    const prompt = `Cerca su borsaitaliana.it o euronext.com certificati strutturati attivi simili a: ${proposal.productName} su ${underlying}. Rispondi SOLO con JSON: {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome>","scadenza":"<data>","similarity":"Alta|Media","fonte":"<url>"}],"note":"<commento>"}`;
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();

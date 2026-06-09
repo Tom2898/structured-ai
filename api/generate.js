@@ -133,10 +133,11 @@ export default async function handler(req, res) {
   }
 
   // ── 5. Call Anthropic ────────────────────────────────────────────────────────
+  // Use Haiku for web search (ISIN lookup) — higher rate limits, sufficient for JSON extraction
+  // Use Sonnet for proposal generation — needs reasoning quality
   const body = {
-    model: 'claude-sonnet-4-5',
-    // Web search needs less output tokens — ISIN JSON is compact; lower limit reduces TPM usage
-    max_tokens: useWebSearch ? 2500 : 2000,
+    model: useWebSearch ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-5',
+    max_tokens: useWebSearch ? 1500 : 2000,
     messages: [{ role: 'user', content: prompt }],
   };
   if (useWebSearch) {
