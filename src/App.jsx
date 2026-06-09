@@ -985,7 +985,7 @@ export default function App() {
   const [isinLoading, setIsinLoading] = useState({});
   const [isinResults, setIsinResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_isinResults") || "{}"); } catch { return {}; } });
   const [isinUsedIndex, setIsinUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_isinUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
-  const isinLockRef = React.useRef(false); // synchronous lock to prevent race condition
+  const isinLockRef = React.useRef(null); // synchronous lock to prevent race condition
   const underlyingLockRef = React.useRef(null); // synchronous lock for underlying analysis
   const [underlyingAnalysis, setUnderlyingAnalysis] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyingAnalysis") || "{}"); } catch { return {}; } });
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
