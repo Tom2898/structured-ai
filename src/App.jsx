@@ -1475,7 +1475,20 @@ Reply ONLY with this JSON (no text outside):
       ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati già scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
       : "";
 
-    const prompt = `Cerca su borsaitaliana.it o euronext.com certificati strutturati attivi simili a: ${proposal.productName} su ${underlying}. Rispondi SOLO con JSON: {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome>","scadenza":"<data>","similarity":"Alta|Media","fonte":"<url>"}],"note":"<commento>"}`;
+    const terms = proposal.terms || {};
+    const termsStr = [
+      terms.barrier ? `barriera ${terms.barrier}` : "",
+      terms.coupon  ? `cedola ${terms.coupon}` : "",
+      terms.maturity ? `scadenza ${terms.maturity}` : "",
+    ].filter(Boolean).join(", ");
+
+    const prompt = `Sei un ricercatore di prodotti finanziari. Cerca su borsaitaliana.it, euronext.com o certificatiederivati.it certificati strutturati di tipo "${proposal.productName}" sul sottostante ${underlying}${termsStr ? ` con caratteristiche simili a: ${termsStr}` : ""}. ${activeFilter}
+
+Trova fino a 3 codici ISIN reali e validi. Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
+{"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome breve>","scadenza":"<MM/YYYY>","similarity":"Alta|Media","fonte":"<url pagina>"}],"note":"<commento breve o stringa vuota>"}
+
+Se non trovi nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`;
+
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
@@ -1493,6 +1506,7 @@ Reply ONLY with this JSON (no text outside):
       // Grab the LAST text block (final answer after web search)
       const textBlocks = (data.content || []).filter(b => b.type === "text" && b.text);
       const rawText = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text : "";
+      console.log("[ISIN search] rawText:", rawText);
       // Strip markdown fences, then extract the outermost JSON object
       const stripped = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       // Use a greedy match to get the full JSON object including nested arrays
