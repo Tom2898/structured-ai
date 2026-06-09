@@ -1489,7 +1489,7 @@ Reply ONLY with this JSON (no text outside):
         const waitSec = data?.retryAfter || 5;
         throw Object.assign(new Error("rate_limit"), { retryAfter: waitSec });
       }
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(typeof data.error === "string" ? data.error : data.error.message);
       // Grab the LAST text block (final answer after web search)
       const textBlocks = (data.content || []).filter(b => b.type === "text" && b.text);
       const rawText = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text : "";
@@ -1506,6 +1506,8 @@ Reply ONLY with this JSON (no text outside):
           setIsinResults(prev => ({ ...prev, [index]: { isins: [], note: "Errore nel parsing dei risultati." } }));
         }
       }
+      // ✅ FIX: stop spinner after successful response
+      setIsinLoading(prev => ({ ...prev, [index]: false }));
     } catch (err) {
       const isRateLimit = err?.message === "rate_limit";
       const MAX_ISIN_RETRIES = 4;
