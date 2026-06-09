@@ -815,10 +815,10 @@ export default function App() {
     document.head.appendChild(script);
   }, []);
 
-  // Render invisible Turnstile widget on auth AND app screens
+  // Render invisible Turnstile widget when auth screen is shown
   React.useEffect(() => {
-    if (screen !== "auth" && screen !== "app") return;
-    // Reset token on each screen change
+    if (screen !== "auth") return;
+    // Reset token on each visit to auth screen
     setTurnstileToken(null);
 
     function tryRender() {
@@ -981,6 +981,7 @@ export default function App() {
   const [isinResults, setIsinResults] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_isinResults") || "{}"); } catch { return {}; } });
   const [isinUsedIndex, setIsinUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_isinUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
   const isinLockRef = React.useRef(false); // synchronous lock to prevent race condition
+  const underlyingLockRef = React.useRef(null); // synchronous lock for underlying analysis
   const [underlyingAnalysis, setUnderlyingAnalysis] = useState(() => { try { return JSON.parse(localStorage.getItem("sai_underlyingAnalysis") || "{}"); } catch { return {}; } });
   const [underlyingAnalysisLoading, setUnderlyingAnalysisLoading] = useState({});
   const [underlyingAnalysisUsedIndex, setUnderlyingAnalysisUsedIndex] = useState(() => { try { const v = localStorage.getItem("sai_underlyingAnalysisUsedIndex"); return v !== null ? JSON.parse(v) : null; } catch { return null; } });
@@ -1332,6 +1333,8 @@ console.log("signup token:", data.session?.access_token);
     setIsinResults({});
     setIsinUsedIndex(null);
     isinLockRef.current = null;
+    setUnderlyingAnalysisUsedIndex(null);
+    underlyingLockRef.current = null;
     setCompareSelected([]);
 
     // Build product constraint
@@ -1552,6 +1555,11 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
 
 
   async function analyzeUnderlying(proposal, index) {
+    // Synchronous lock — prevents race condition when user clicks multiple cards before React re-renders
+    if (typeof index === 'number') {
+      if (underlyingLockRef.current !== null && underlyingLockRef.current !== index) return;
+      if (underlyingLockRef.current === null) underlyingLockRef.current = index;
+    }
     if (typeof index === 'number' && underlyingAnalysisUsedIndex !== null && underlyingAnalysisUsedIndex !== index) return;
     if (typeof index === 'number') setUnderlyingAnalysisUsedIndex(index);
     setUnderlyingAnalysisLoading(prev => ({ ...prev, [index]: true }));
@@ -1912,8 +1920,6 @@ ${proposal.payoff ? `<div class="section">
   return (
     <>
       <style>{css}</style>
-      {/* Turnstile invisible widget container — needed for proposal generation */}
-      <div id="turnstile-container" style={{ display: "none" }} />
       <nav className="topnav">
         <div className="topnav-logo">
           <div className="topnav-logo-mark">S</div>
