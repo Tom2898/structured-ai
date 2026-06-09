@@ -1475,19 +1475,14 @@ Reply ONLY with this JSON (no text outside):
       ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati già scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
       : "";
 
-    const terms = proposal.terms || {};
-    const termsStr = [
-      terms.barrier ? `barriera ${terms.barrier}` : "",
-      terms.coupon  ? `cedola ${terms.coupon}` : "",
-      terms.maturity ? `scadenza ${terms.maturity}` : "",
-    ].filter(Boolean).join(", ");
+    const prompt = `Sei un ricercatore di prodotti finanziari. Cerca su borsaitaliana.it, euronext.com o certificatiederivati.it certificati strutturati di tipo "${proposal.productName}" che abbiano come sottostante uno o più di questi titoli: ${underlying}. ${activeFilter}
 
-    const prompt = `Sei un ricercatore di prodotti finanziari. Cerca su borsaitaliana.it, euronext.com o certificatiederivati.it certificati strutturati di tipo "${proposal.productName}" sul sottostante ${underlying}${termsStr ? ` con caratteristiche simili a: ${termsStr}` : ""}. ${activeFilter}
+NON filtrare per cedola, barriera o scadenza esatte — cerca certificati dello stesso TIPO con gli stessi sottostanti o sottostanti simili. Restituisci fino a 3 risultati reali trovati online, anche se i termini differiscono leggermente.
 
-Trova fino a 3 codici ISIN reali e validi. Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
+Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
 {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome breve>","scadenza":"<MM/YYYY>","similarity":"Alta|Media","fonte":"<url pagina>"}],"note":"<commento breve o stringa vuota>"}
 
-Se non trovi nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`;
+Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`;
 
 
     try {
