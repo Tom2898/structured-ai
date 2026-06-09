@@ -834,9 +834,14 @@ export default function App() {
         sitekey: "0x4AAAAAADYB_wseccdR0lZP",
         size: "invisible",
         callback: (token) => { setTurnstileToken(token); },
-        "expired-callback": () => { setTurnstileToken(null); },
+        "expired-callback": () => {
+          setTurnstileToken(null);
+          try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
+        },
         "error-callback": () => { setTurnstileToken(null); },
       });
+      // Auto-execute to get a token immediately after render
+      try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
     }
     tryRender();
 
@@ -1424,10 +1429,11 @@ Reply ONLY with this JSON (no text outside):
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "x-turnstile-token": turnstileToken || "" },
         body: JSON.stringify({ prompt })
       });
-      // Reset Turnstile token after use (it's one-time)
+      // Reset Turnstile token after use (it's one-time), then execute to get a fresh one
       setTurnstileToken(null);
       if (turnstileWidgetId.current !== null && window.turnstile) {
         try { window.turnstile.reset(turnstileWidgetId.current); } catch (_) {}
+        try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
       }
       if (res.status === 429) {
         setShowUpgradeModal(true);
@@ -1513,10 +1519,11 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": currentToken },
           body: JSON.stringify({ prompt, useWebSearch: true })
         });
-        // Reset Turnstile after use
+        // Reset Turnstile after use, then execute to get a fresh one
         setTurnstileToken(null);
         if (turnstileWidgetId.current !== null && window.turnstile) {
           try { window.turnstile.reset(turnstileWidgetId.current); } catch (_) {}
+          try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
         }
         if (res.status !== 429) break;
         attempts++;
