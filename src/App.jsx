@@ -1338,6 +1338,7 @@ console.log("signup token:", data.session?.access_token);
     setIsinResults({});
     setIsinUsedIndex(null);
     isinLockRef.current = null;
+    setUnderlyingAnalysis({});
     setUnderlyingAnalysisUsedIndex(null);
     underlyingLockRef.current = null;
     setCompareSelected([]);
