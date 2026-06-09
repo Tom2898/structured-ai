@@ -11,7 +11,7 @@ const PLAN_LIMITS = { free: 3, retail: 20, pro: 300 };
 // ── Per-user cooldown for web search (ISIN) requests ─────────────────────────
 // Prevents burst retries from hammering Anthropic and causing 429s
 const isinCooldown = new Map(); // userId -> timestamp of last isin call
-const ISIN_COOLDOWN_MS = 15000; // 15 seconds between ISIN searches per user
+const ISIN_COOLDOWN_MS = 5000; // 5 seconds between ISIN searches per user
 
 // ── Turnstile verification ────────────────────────────────────────────────────
 async function verifyTurnstile(token, ip) {

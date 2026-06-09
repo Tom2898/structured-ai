@@ -1511,30 +1511,11 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
-      let res, attempts = 0;
-      while (attempts < 4) {
-        // Get fresh token for each attempt (Turnstile tokens are one-time use)
-        const currentToken = turnstileToken || "";
-        res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": currentToken },
-          body: JSON.stringify({ prompt, useWebSearch: true })
-        });
-        // Reset Turnstile after use, then execute to get a fresh one
-        setTurnstileToken(null);
-        if (turnstileWidgetId.current !== null && window.turnstile) {
-          try { window.turnstile.reset(turnstileWidgetId.current); } catch (_) {}
-          try { window.turnstile.execute(turnstileWidgetId.current); } catch (_) {}
-        }
-        if (res.status !== 429) break;
-        attempts++;
-        if (attempts < 4) {
-          const body = await res.clone().json().catch(() => ({}));
-          const waitMs = body.retryAfter ? body.retryAfter * 1000 : attempts * 3000;
-          // Wait for new Turnstile token before retrying
-          await new Promise(r => setTimeout(r, waitMs));
-        }
-      }
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": turnstileToken || "" },
+        body: JSON.stringify({ prompt, useWebSearch: true })
+      });
       if (res.status === 429) throw new Error("rate_limit");
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
