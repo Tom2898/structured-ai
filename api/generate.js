@@ -135,31 +135,50 @@ export default async function handler(req, res) {
   // ── 5. Call Anthropic ────────────────────────────────────────────────────────
   const body = {
     model: 'claude-sonnet-4-5',
-    max_tokens: useWebSearch ? 4000 : 2000,
+    // Web search needs less output tokens — ISIN JSON is compact; lower limit reduces TPM usage
+    max_tokens: useWebSearch ? 2500 : 2000,
     messages: [{ role: 'user', content: prompt }],
   };
   if (useWebSearch) {
     body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
   }
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
+  const MAX_RETRIES = 3;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    const data = await response.json();
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('retry-after') || '15';
-      console.warn(`Anthropic rate limit hit, retry-after: ${retryAfter}s`);
-      return res.status(429).json({ error: 'rate_limit', retryAfter: parseInt(retryAfter, 10) });
+  try {
+    let lastData;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(body),
+      });
+
+      lastData = await response.json();
+
+      if (response.status !== 429) {
+        return res.status(response.status).json(lastData);
+      }
+
+      // Anthropic 429 — backoff and retry
+      const retryAfterHeader = response.headers.get('retry-after');
+      const waitMs = retryAfterHeader
+        ? parseInt(retryAfterHeader, 10) * 1000
+        : (attempt + 1) * 10000; // 10s, 20s, 30s
+      console.warn(`Anthropic 429 (attempt ${attempt + 1}/${MAX_RETRIES}), waiting ${waitMs}ms`);
+      if (attempt < MAX_RETRIES - 1) await sleep(waitMs);
     }
-    return res.status(response.status).json(data);
+
+    // All retries exhausted — propagate 429 to client
+    const retryAfter = lastData?.error?.message?.match(/try again in (\d+)/)?.[1] || '30';
+    return res.status(429).json({ error: 'rate_limit', retryAfter: parseInt(retryAfter, 10) });
+
   } catch (err) {
     console.error('Generate error:', err.message);
     return res.status(500).json({ error: 'Errore interno. Riprova.' });
