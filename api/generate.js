@@ -143,41 +143,35 @@ export default async function handler(req, res) {
     body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
   }
 
-  const MAX_RETRIES = 3;
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
   try {
-    let lastData;
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      });
-
-      lastData = await response.json();
-
-      if (response.status !== 429) {
-        return res.status(response.status).json(lastData);
-      }
-
-      // Anthropic 429 — backoff and retry
+    if (response.status === 429) {
+      // Parse retry-after from header or body, forward to client to handle retry
       const retryAfterHeader = response.headers.get('retry-after');
-      const waitMs = retryAfterHeader
-        ? parseInt(retryAfterHeader, 10) * 1000
-        : (attempt + 1) * 10000; // 10s, 20s, 30s
-      console.warn(`Anthropic 429 (attempt ${attempt + 1}/${MAX_RETRIES}), waiting ${waitMs}ms`);
-      if (attempt < MAX_RETRIES - 1) await sleep(waitMs);
+      const bodyText = await response.text();
+      let retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : null;
+      if (!retryAfter) {
+        try {
+          const parsed = JSON.parse(bodyText);
+          const match = parsed?.error?.message?.match(/try again in (\d+)/);
+          retryAfter = match ? parseInt(match[1], 10) : 15;
+        } catch { retryAfter = 15; }
+      }
+      console.warn(`Anthropic 429, retry-after: ${retryAfter}s`);
+      return res.status(429).json({ error: 'rate_limit', retryAfter });
     }
 
-    // All retries exhausted — propagate 429 to client
-    const retryAfter = lastData?.error?.message?.match(/try again in (\d+)/)?.[1] || '30';
-    return res.status(429).json({ error: 'rate_limit', retryAfter: parseInt(retryAfter, 10) });
+    const data = await response.json();
+    return res.status(response.status).json(data);
 
   } catch (err) {
     console.error('Generate error:', err.message);

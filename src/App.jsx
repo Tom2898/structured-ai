@@ -1457,18 +1457,18 @@ Reply ONLY with this JSON (no text outside):
     setLoading(false);
   }
 
-  async function searchISIN(proposal, index) {
+  async function searchISIN(proposal, index, _attempt = 0) {
     if (!canSearchISIN) { setShowUpgradeModal(true); return; }
     // Synchronous lock via ref - blocks concurrent clicks before React re-renders
     // isinLockRef.current holds the locked index (or null). Never reset once set.
-    if (typeof index === "number") {
+    if (typeof index === "number" && _attempt === 0) {
       if (isinLockRef.current !== null && isinLockRef.current !== index) return;
       if (isinLockRef.current === null) isinLockRef.current = index;
     }
     // Only one ISIN search allowed per batch of 3 proposals (generator tab)
     // History tab uses string keys like "h_...", so we only restrict numeric indices
-    if (typeof index === "number" && isinUsedIndex !== null && isinUsedIndex !== index) return;
-    if (typeof index === "number") setIsinUsedIndex(index);
+    if (typeof index === "number" && _attempt === 0 && isinUsedIndex !== null && isinUsedIndex !== index) return;
+    if (typeof index === "number" && _attempt === 0) setIsinUsedIndex(index);
     setIsinLoading(prev => ({ ...prev, [index]: true }));
     const underlying = proposal.underlying.suggested.join(", ");
     const activeFilter = canSearchISIN
@@ -1540,17 +1540,17 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       }
     } catch (err) {
       const isRateLimit = err?.message === "rate_limit";
-      if (isRateLimit) {
-        // Keep spinner during cooldown, retry after exact retryAfter seconds from backend
-        const waitMs = ((err.retryAfter || 5) + 1) * 1000;
-        setIsinResults(prev => ({ ...prev, [index]: null }));
-        setIsinLoading(prev => ({ ...prev, [index]: true }));
-        setTimeout(() => {
-          isinLockRef.current = null;
-          setIsinUsedIndex(null);
-          setIsinLoading(prev => ({ ...prev, [index]: false }));
-          searchISIN(proposal, index);
-        }, waitMs);
+      const MAX_ISIN_RETRIES = 4;
+      if (isRateLimit && _attempt < MAX_ISIN_RETRIES) {
+        // Exponential backoff: 15s, 20s, 30s, 45s — keep spinner visible
+        const waitMs = ((err.retryAfter || 15) + _attempt * 5) * 1000;
+        console.log(`ISIN rate limit, retry ${_attempt + 1}/${MAX_ISIN_RETRIES} in ${waitMs}ms`);
+        setTimeout(() => searchISIN(proposal, index, _attempt + 1), waitMs);
+        // Keep loading spinner, don't clear it
+      } else if (isRateLimit) {
+        // All retries exhausted
+        setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: true } }));
+        setIsinLoading(prev => ({ ...prev, [index]: false }));
       } else {
         setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: false } }));
         setIsinLoading(prev => ({ ...prev, [index]: false }));
