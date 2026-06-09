@@ -8,11 +8,6 @@ const supabase = createClient(
 // ── Limits (keep in sync with App.jsx PLANS) ─────────────────────────────────
 const PLAN_LIMITS = { free: 3, retail: 20, pro: 300 };
 
-// ── Per-user cooldown for web search (ISIN) requests ─────────────────────────
-// Prevents burst retries from hammering Anthropic and causing 429s
-const isinCooldown = new Map(); // userId -> timestamp of last isin call
-const ISIN_COOLDOWN_MS = 5000; // 5 seconds between ISIN searches per user
-
 // ── Turnstile verification ────────────────────────────────────────────────────
 async function verifyTurnstile(token, ip) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
@@ -98,24 +93,9 @@ export default async function handler(req, res) {
 
   // ── 4. ISIN search checks ────────────────────────────────────────────────────
   if (useWebSearch) {
-    // Per-user cooldown: block if last call was less than 15s ago
-    const lastCall = isinCooldown.get(authUser.id) || 0;
-    const now = Date.now();
-    const elapsed = now - lastCall;
-    if (elapsed < ISIN_COOLDOWN_MS) {
-      const waitSec = Math.ceil((ISIN_COOLDOWN_MS - elapsed) / 1000);
-      return res.status(429).json({ error: 'rate_limit', retryAfter: waitSec });
-    }
-    isinCooldown.set(authUser.id, now);
-    // Clean up old entries to avoid memory leak
-    if (isinCooldown.size > 1000) {
-      const cutoff = now - ISIN_COOLDOWN_MS * 2;
-      for (const [uid, ts] of isinCooldown) { if (ts < cutoff) isinCooldown.delete(uid); }
-    }
-
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('plan, status, isin_analysis_count, isin_analysis_reset_at')
+      .select('plan, status, isin_analysis_count, isin_analysis_reset_at, isin_last_search_at')
       .eq('user_id', authUser.id)
       .single();
 
@@ -124,6 +104,15 @@ export default async function handler(req, res) {
     if (plan === 'free' || status !== 'active') {
       return res.status(403).json({ error: 'Ricerca ISIN disponibile solo per piani Retail e Pro.' });
     }
+
+    // Per-user cooldown via Supabase (works across Vercel serverless instances)
+    const lastSearchAt = sub?.isin_last_search_at ? new Date(sub.isin_last_search_at).getTime() : 0;
+    const secondsSinceLast = (Date.now() - lastSearchAt) / 1000;
+    if (secondsSinceLast < 10) {
+      return res.status(429).json({ error: 'rate_limit', retryAfter: Math.ceil(10 - secondsSinceLast) });
+    }
+    // Update last search timestamp immediately
+    await supabase.from('subscriptions').update({ isin_last_search_at: new Date().toISOString() }).eq('user_id', authUser.id);
 
     if (plan === 'retail') {
       const now2 = new Date();
@@ -168,8 +157,6 @@ export default async function handler(req, res) {
     if (response.status === 429) {
       const retryAfter = response.headers.get('retry-after') || '15';
       console.warn(`Anthropic rate limit hit, retry-after: ${retryAfter}s`);
-      // Reset cooldown so user can retry after the wait
-      if (useWebSearch) isinCooldown.delete(authUser.id);
       return res.status(429).json({ error: 'rate_limit', retryAfter: parseInt(retryAfter, 10) });
     }
     return res.status(response.status).json(data);
