@@ -108,8 +108,8 @@ export default async function handler(req, res) {
     // Per-user cooldown via Supabase (works across Vercel serverless instances)
     const lastSearchAt = sub?.isin_last_search_at ? new Date(sub.isin_last_search_at).getTime() : 0;
     const secondsSinceLast = (Date.now() - lastSearchAt) / 1000;
-    if (secondsSinceLast < 10) {
-      return res.status(429).json({ error: 'rate_limit', retryAfter: Math.ceil(10 - secondsSinceLast) });
+    if (secondsSinceLast < 3) {
+      return res.status(429).json({ error: 'rate_limit', retryAfter: Math.ceil(3 - secondsSinceLast) });
     }
     // Update last search timestamp immediately
     await supabase.from('subscriptions').update({ isin_last_search_at: new Date().toISOString() }).eq('user_id', authUser.id);

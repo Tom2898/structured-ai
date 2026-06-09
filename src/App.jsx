@@ -1516,8 +1516,11 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": turnstileToken || "" },
         body: JSON.stringify({ prompt, useWebSearch: true })
       });
-      if (res.status === 429) throw new Error("rate_limit");
       const data = await res.json();
+      if (res.status === 429) {
+        const waitSec = data?.retryAfter || 5;
+        throw Object.assign(new Error("rate_limit"), { retryAfter: waitSec });
+      }
       if (data.error) throw new Error(data.error.message);
       // Grab the LAST text block (final answer after web search)
       const textBlocks = (data.content || []).filter(b => b.type === "text" && b.text);
@@ -1538,7 +1541,8 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
     } catch (err) {
       const isRateLimit = err?.message === "rate_limit";
       if (isRateLimit) {
-        // Keep spinner during cooldown, then auto-retry with full lock reset
+        // Keep spinner during cooldown, retry after exact retryAfter seconds from backend
+        const waitMs = ((err.retryAfter || 5) + 1) * 1000;
         setIsinResults(prev => ({ ...prev, [index]: null }));
         setIsinLoading(prev => ({ ...prev, [index]: true }));
         setTimeout(() => {
@@ -1546,7 +1550,7 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
           setIsinUsedIndex(null);
           setIsinLoading(prev => ({ ...prev, [index]: false }));
           searchISIN(proposal, index);
-        }, 12000);
+        }, waitMs);
       } else {
         setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: false } }));
         setIsinLoading(prev => ({ ...prev, [index]: false }));
