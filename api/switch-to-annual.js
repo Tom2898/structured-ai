@@ -21,22 +21,25 @@ export default async function handler(req, res) {
   if (!priceIdAnnual) return res.status(400).json({ error: 'priceIdAnnual mancante' });
 
   // Whitelist: only the known annual price ID is accepted
-  const ALLOWED_ANNUAL_PRICE_IDS = new Set(['price_1TahpuHcctqaGDVzW2q6nztf']);
+  const ALLOWED_ANNUAL_PRICE_IDS = new Set(['price_1Tg9OMQk0TtLlDLRGL2saBJt']);
   if (!ALLOWED_ANNUAL_PRICE_IDS.has(priceIdAnnual)) {
     return res.status(400).json({ error: 'Piano non valido.' });
   }
 
   try {
-    // Get subscription from Supabase
+    // Get subscription from Supabase — lookup by user_id, never by email
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, billing_interval')
-      .eq('email', user.email)
+      .eq('user_id', user.id)
       .single();
 
     if (subError || !sub?.stripe_subscription_id) {
+      console.error('switch-to-annual: sub not found', { subError: subError?.message, userId: user.id });
       return res.status(404).json({ error: 'Abbonamento non trovato' });
     }
+
+    console.log('switch-to-annual: billing_interval =', sub.billing_interval, '| stripe_sub =', sub.stripe_subscription_id);
 
     if (sub.billing_interval === 'year') {
       return res.status(400).json({ error: 'Sei già sul piano annuale' });
@@ -62,7 +65,7 @@ export default async function handler(req, res) {
     await supabase
       .from('subscriptions')
       .update({ billing_interval: 'year', updated_at: new Date().toISOString() })
-      .eq('email', user.email);
+      .eq('user_id', user.id);
 
     return res.status(200).json({ success: true });
 
