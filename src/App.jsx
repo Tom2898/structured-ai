@@ -2764,13 +2764,13 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
           {onExportPDF && (
             <button className="action-btn" onClick={onExportPDF} style={{ fontSize:11 }}>↓ PDF</button>
           )}
-          {onAnalyzeUnderlying && !underlyingAnalysisLocked && (
+          {onAnalyzeUnderlying && !underlyingAnalysisLocked && !underlyingAnalysisResult && (
             <button className="action-btn" onClick={onAnalyzeUnderlying} disabled={underlyingAnalysisLoading} style={{ fontSize:11, background:"var(--accent-light)", color:"var(--accent)", border:"1px solid rgba(26,58,42,0.2)" }}>
               {underlyingAnalysisLoading ? "⏳" : "📊 Analisi sottostante"}
             </button>
           )}
-          {onAnalyzeUnderlying && underlyingAnalysisLocked && (
-            <span style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>🔒 Analisi già usata su altra struttura</span>
+          {onAnalyzeUnderlying && (underlyingAnalysisLocked || underlyingAnalysisResult) && !underlyingAnalysisLoading && (
+            <span style={{ fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>{underlyingAnalysisLocked ? "🔒 Analisi già usata su altra struttura" : "✓ Analisi completata"}</span>
           )}
           {canSearchISIN && !isinLocked && !isinResults && (
             <button className="isin-search-btn" onClick={onSearchISIN} disabled={isinLoading}>
