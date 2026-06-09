@@ -1537,9 +1537,21 @@ Se non trovi ISIN esatti, inserisci quelli più simili trovati con similarity "M
       }
     } catch (err) {
       const isRateLimit = err?.message === "rate_limit";
-      setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: isRateLimit } }));
+      if (isRateLimit) {
+        // Keep spinner during cooldown, then auto-retry with full lock reset
+        setIsinResults(prev => ({ ...prev, [index]: null }));
+        setIsinLoading(prev => ({ ...prev, [index]: true }));
+        setTimeout(() => {
+          isinLockRef.current = null;
+          setIsinUsedIndex(null);
+          setIsinLoading(prev => ({ ...prev, [index]: false }));
+          searchISIN(proposal, index);
+        }, 12000);
+      } else {
+        setIsinResults(prev => ({ ...prev, [index]: { error: true, rateLimit: false } }));
+        setIsinLoading(prev => ({ ...prev, [index]: false }));
+      }
     }
-    setIsinLoading(prev => ({ ...prev, [index]: false }));
   }
 
 
