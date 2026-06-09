@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   }
 
   // ── 2. Input validation ──────────────────────────────────────────────────────
-  const { prompt, useWebSearch, skipUsage } = req.body;
+  const { prompt, useWebSearch, skipUsage, isinSource } = req.body;
   if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'Prompt mancante.' });
   if (prompt.length > MAX_PROMPT_CHARS) return res.status(400).json({ error: 'Input troppo lungo.' });
 
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     }).eq('user_id', authUser.id);
   }
 
-  // ── 4. ISIN search checks ────────────────────────────────────────────────────
+  // ── 4. ISIN web-search checks ───────────────────────────────────────────────
   if (useWebSearch) {
     const { data: sub } = await supabase
       .from('subscriptions')
@@ -105,16 +105,16 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Ricerca ISIN disponibile solo per piani Retail e Pro.' });
     }
 
-    // Per-user cooldown via Supabase (works across Vercel serverless instances)
+    // Per-user cooldown (anti-spam, applies to both sources)
     const lastSearchAt = sub?.isin_last_search_at ? new Date(sub.isin_last_search_at).getTime() : 0;
     const secondsSinceLast = (Date.now() - lastSearchAt) / 1000;
     if (secondsSinceLast < 3) {
       return res.status(429).json({ error: 'rate_limit', retryAfter: Math.ceil(3 - secondsSinceLast) });
     }
-    // Update last search timestamp immediately
     await supabase.from('subscriptions').update({ isin_last_search_at: new Date().toISOString() }).eq('user_id', authUser.id);
 
-    if (plan === 'retail') {
+    // ── "Analisi ISIN" tab: 5/month limit for Retail ─────────────────────────
+    if (isinSource === 'analysis' && plan === 'retail') {
       const now2 = new Date();
       const resetAt = sub?.isin_analysis_reset_at ? new Date(sub.isin_analysis_reset_at) : new Date(0);
       const isNewMonth = now2.getFullYear() > resetAt.getFullYear() || now2.getMonth() > resetAt.getMonth();
@@ -130,6 +130,7 @@ export default async function handler(req, res) {
         updated_at: now2.toISOString()
       }).eq('user_id', authUser.id);
     }
+    // ── "Cerca ISIN" in Genera: no separate counter, covered by proposal usage ─
   }
 
   // ── 5. Call Anthropic ────────────────────────────────────────────────────────

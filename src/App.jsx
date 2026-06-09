@@ -1161,7 +1161,7 @@ IMPORTANTE: Usa esclusivamente dati trovati online. Se non trovi informazioni pe
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token}`, "x-turnstile-token": turnstileToken || "" },
-        body: JSON.stringify({ prompt, useWebSearch: true })
+        body: JSON.stringify({ prompt, useWebSearch: true, isinSource: "analysis" })
       });
       const data = await res.json();
       if (data.error) { setIsinAnalysisError(data.error); return; }
@@ -1482,7 +1482,7 @@ Reply ONLY with this JSON (no text outside):
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${isinSession?.access_token}`, "x-turnstile-token": turnstileToken || "" },
-        body: JSON.stringify({ prompt, useWebSearch: true })
+        body: JSON.stringify({ prompt, useWebSearch: true, isinSource: "search" })
       });
       const data = await res.json();
       if (res.status === 429) {
