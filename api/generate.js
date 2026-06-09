@@ -6,10 +6,29 @@ const supabase = createClient(
 );
 
 // ── Limits (keep in sync with App.jsx PLANS) ─────────────────────────────────
-const PLAN_LIMITS = { free: 3, retail: 60, pro: 500 };
+const PLAN_LIMITS = { free: 3, retail: 20, pro: 300 };
+
+// ── Per-user cooldown for web search (ISIN) requests ─────────────────────────
+// Prevents burst retries from hammering Anthropic and causing 429s
+const isinCooldown = new Map(); // userId -> timestamp of last isin call
+const ISIN_COOLDOWN_MS = 15000; // 15 seconds between ISIN searches per user
+
+// ── Turnstile verification ────────────────────────────────────────────────────
+async function verifyTurnstile(token, ip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) { console.warn('TURNSTILE_SECRET_KEY not set'); return true; }
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ secret, response: token, ...(ip ? { remoteip: ip } : {}) }),
+  });
+  const data = await res.json();
+  return data.success === true;
+}
 
 // ── Input constraints ─────────────────────────────────────────────────────────
-const MAX_PROMPT_CHARS = 8000;
+const MAX_PROMPT_CHARS = 16000;
 const MAX_UNDERLYINGS  = 20;
 
 // ── Sanitize user-supplied text to prevent prompt injection ───────────────────
@@ -17,17 +36,16 @@ function sanitize(str, maxLen = 200) {
   if (typeof str !== 'string') return '';
   return str
     .slice(0, maxLen)
-    .replace(/[^\w\s.,;:()\-+%€$@]/g, '') // strip special chars that could inject instructions
+    .replace(/[^\w\s.,;:()\-+%€$@]/g, '')
     .trim();
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // ── 1. Auth: verify JWT from Authorization header, never trust body ──────────
+  // ── 1. Auth ──────────────────────────────────────────────────────────────────
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
   if (!token) return res.status(401).json({ error: 'Non autenticato.' });
 
   const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
@@ -35,18 +53,23 @@ export default async function handler(req, res) {
 
   const email = authUser.email;
 
+  // ── 1b. Turnstile ────────────────────────────────────────────────────────────
+  const turnstileToken = req.headers['x-turnstile-token'] || '';
+  const clientIp = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || '';
+  const turnstileOk = await verifyTurnstile(turnstileToken, clientIp);
+  // Only block if Turnstile is configured AND verification fails with a non-empty token
+  // If token is empty but user is authenticated via JWT, let it through
+  if (!turnstileOk && turnstileToken) {
+    return res.status(403).json({ error: 'Verifica di sicurezza fallita. Ricarica la pagina e riprova.' });
+  }
+
   // ── 2. Input validation ──────────────────────────────────────────────────────
-  const { prompt, useWebSearch } = req.body;
+  const { prompt, useWebSearch, skipUsage } = req.body;
+  if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'Prompt mancante.' });
+  if (prompt.length > MAX_PROMPT_CHARS) return res.status(400).json({ error: 'Input troppo lungo.' });
 
-  if (!prompt || typeof prompt !== 'string') {
-    return res.status(400).json({ error: 'Prompt mancante.' });
-  }
-  if (prompt.length > MAX_PROMPT_CHARS) {
-    return res.status(400).json({ error: 'Input troppo lungo.' });
-  }
-
-  // ── 3. Usage check server-side (only for proposal generation, not ISIN) ──────
-  if (!useWebSearch) {
+  // ── 3. Usage check (proposals only) ─────────────────────────────────────────
+  if (!useWebSearch && !skipUsage) {
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('plan, status, usage_count, usage_reset_at')
@@ -56,36 +79,43 @@ export default async function handler(req, res) {
     const plan = sub?.plan || 'free';
     const status = sub?.status || 'free';
     const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-
-    // Treat cancelled/past_due as free limit
     const effectiveLimit = (status === 'active') ? limit : PLAN_LIMITS.free;
-
     const resetAt = sub?.usage_reset_at ? new Date(sub.usage_reset_at) : new Date(0);
     const now = new Date();
-    const isNewMonth = now.getFullYear() > resetAt.getFullYear() ||
-      now.getMonth() > resetAt.getMonth();
-
+    const isNewMonth = now.getFullYear() > resetAt.getFullYear() || now.getMonth() > resetAt.getMonth();
     const usageCount = isNewMonth ? 0 : (sub?.usage_count || 0);
 
     if (usageCount >= effectiveLimit) {
       return res.status(429).json({ error: 'Limite mensile raggiunto. Fai upgrade per continuare.' });
     }
 
-    // Increment counter
     await supabase.from('subscriptions').update({
       usage_count: usageCount + 1,
-      usage_reset_at: isNewMonth
-        ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-        : sub.usage_reset_at,
+      usage_reset_at: isNewMonth ? new Date(now.getFullYear(), now.getMonth(), 1).toISOString() : sub.usage_reset_at,
       updated_at: now.toISOString()
     }).eq('user_id', authUser.id);
   }
 
-  // ── 4. ISIN search: only allowed for retail/pro ───────────────────────────────
+  // ── 4. ISIN search checks ────────────────────────────────────────────────────
   if (useWebSearch) {
+    // Per-user cooldown: block if last call was less than 15s ago
+    const lastCall = isinCooldown.get(authUser.id) || 0;
+    const now = Date.now();
+    const elapsed = now - lastCall;
+    if (elapsed < ISIN_COOLDOWN_MS) {
+      const waitSec = Math.ceil((ISIN_COOLDOWN_MS - elapsed) / 1000);
+      return res.status(429).json({ error: 'rate_limit', retryAfter: waitSec });
+    }
+    isinCooldown.set(authUser.id, now);
+    // Clean up old entries to avoid memory leak
+    if (isinCooldown.size > 1000) {
+      const cutoff = now - ISIN_COOLDOWN_MS * 2;
+      for (const [uid, ts] of isinCooldown) { if (ts < cutoff) isinCooldown.delete(uid); }
+    }
+
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('plan, status')
+      .select('plan, status, isin_analysis_count, isin_analysis_reset_at')
       .eq('user_id', authUser.id)
       .single();
 
@@ -94,15 +124,31 @@ export default async function handler(req, res) {
     if (plan === 'free' || status !== 'active') {
       return res.status(403).json({ error: 'Ricerca ISIN disponibile solo per piani Retail e Pro.' });
     }
+
+    if (plan === 'retail') {
+      const now2 = new Date();
+      const resetAt = sub?.isin_analysis_reset_at ? new Date(sub.isin_analysis_reset_at) : new Date(0);
+      const isNewMonth = now2.getFullYear() > resetAt.getFullYear() || now2.getMonth() > resetAt.getMonth();
+      const count = isNewMonth ? 0 : (sub?.isin_analysis_count || 0);
+
+      if (count >= 5) {
+        return res.status(429).json({ error: 'Hai esaurito le 5 analisi ISIN disponibili questo mese. Rinnovo il mese prossimo.' });
+      }
+
+      await supabase.from('subscriptions').update({
+        isin_analysis_count: count + 1,
+        isin_analysis_reset_at: isNewMonth ? new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString() : sub.isin_analysis_reset_at,
+        updated_at: now2.toISOString()
+      }).eq('user_id', authUser.id);
+    }
   }
 
-  // ── 5. Call Anthropic API ─────────────────────────────────────────────────────
+  // ── 5. Call Anthropic ────────────────────────────────────────────────────────
   const body = {
     model: 'claude-sonnet-4-5',
-    max_tokens: 2000,
+    max_tokens: useWebSearch ? 4000 : 2000,
     messages: [{ role: 'user', content: prompt }],
   };
-
   if (useWebSearch) {
     body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
   }
@@ -119,6 +165,13 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('retry-after') || '15';
+      console.warn(`Anthropic rate limit hit, retry-after: ${retryAfter}s`);
+      // Reset cooldown so user can retry after the wait
+      if (useWebSearch) isinCooldown.delete(authUser.id);
+      return res.status(429).json({ error: 'rate_limit', retryAfter: parseInt(retryAfter, 10) });
+    }
     return res.status(response.status).json(data);
   } catch (err) {
     console.error('Generate error:', err.message);

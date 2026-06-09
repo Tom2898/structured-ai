@@ -2504,9 +2504,9 @@ ${proposal.payoff ? `<div class="section">
                 </div>
 
                 <button className="gen-btn"
-                  disabled={!riskAppetite || !horizon || !objective || underlyings.length === 0 || loading || atLimit || !turnstileToken}
+                  disabled={!riskAppetite || !horizon || !objective || underlyings.length === 0 || loading || atLimit}
                   onClick={generateProposals}>
-                  {loading ? "Analisi in corso..." : atLimit ? "Limite raggiunto" : !turnstileToken ? "Verifica sicurezza..." : "Genera 3 strutture"}
+                  {loading ? "Analisi in corso..." : atLimit ? "Limite raggiunto" : "Genera 3 strutture"}
                 </button>
                 {(!riskAppetite || !horizon || !objective || underlyings.length === 0) && !atLimit && (
                   <div style={{ fontSize:11, color:"var(--muted)", marginTop:6, textAlign:"center" }}>* campi obbligatori</div>
