@@ -1487,7 +1487,7 @@ NON filtrare per cedola, barriera o scadenza esatte — cerca certificati dello 
 Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
 {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome breve>","scadenza":"<MM/YYYY>","similarity":"Alta|Media","fonte":"<url pagina>"}],"note":"<commento breve o stringa vuota>"}
 
-Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`; ${proposal.productName} su ${underlying}. Rispondi SOLO con JSON: {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome>","scadenza":"<data>","similarity":"Alta|Media","fonte":"<url>"}],"note":"<commento>"}`;
+Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"``;
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
@@ -2897,3 +2897,4 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
