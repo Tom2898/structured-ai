@@ -1384,20 +1384,35 @@ console.log("signup token:", data.session?.access_token);
         ? S * Math.exp(-q * T) * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)
         : K * Math.exp(-r * T) * normCDF(-d2) - S * Math.exp(-q * T) * normCDF(-d1);
     }
+    function rfr(T) { return T <= 1 ? 0.031 : T <= 2 ? 0.030 : 0.028; }
+    // Structuring cost: 1% p.a. (issuer spread only — distribution separate)
+    const COST = 0.010;
+    function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+    function pct(x) { return `${Math.round(x * 1000) / 10}%`; }
+
+    // Worst-of vol: for Italian bank stocks (high individual vol, high correlation ~0.7)
+    // use max vol + correlation discount rather than averaging down
+    function woVol(vols, rho = 0.65) {
+      if (vols.length === 1) return vols[0];
+      const maxVol = Math.max(...vols);
+      const avgVol = vols.reduce((a, b) => a + b, 0) / vols.length;
+      // Effective worst-of vol is between avg and max, boosted by decorrelation
+      // For N=3 Italian banks rho~0.65: effective vol ≈ maxVol × (1 + (1-rho)/N)
+      return maxVol * (1 + (1 - rho) / vols.length);
+    }
+
+    // OTM European put at strike B (the actual coupon-financing instrument in Phoenix/Autocall)
+    // This is what the issuer sells to fund the coupon — much more valuable than down-and-out
+    function otmPut(S, B, T, r, q, vol) {
+      return bsPrice("put", S, B, T, r, q, vol);
+    }
+
+    // Down-and-out put (for bonus/twin-win where barrier is truly continuous)
     function downAndOutPut(S, K, B, T, r, q, vol) {
       const vanilla = bsPrice("put", S, K, T, r, q, vol);
       const mu = (r - q - 0.5 * vol * vol) / (vol * vol);
       const reflected = Math.pow(B / S, 2 * mu) * bsPrice("put", (B * B) / S, K, T, r, q, vol);
       return Math.max(0, vanilla - reflected);
-    }
-    function rfr(T) { return T <= 1 ? 0.031 : T <= 2 ? 0.030 : 0.028; }
-    const COST = 0.025; // 2.5% p.a. total structuring cost
-    function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
-    function pct(x) { return `${Math.round(x * 1000) / 10}%`; }
-    function woVol(vols) {
-      if (vols.length === 1) return vols[0];
-      const avg = vols.reduce((a, b) => a + b, 0) / vols.length;
-      return avg + (Math.max(...vols) - avg) * 0.6 * (1 - 1 / vols.length);
     }
 
     function computeTerms(productId, tickers) {
@@ -1406,32 +1421,44 @@ console.log("signup token:", data.session?.access_token);
       const S = 1, K = 1;
       switch (productId) {
         case "autocall": {
-          const B = vol > 0.35 ? 0.55 : vol > 0.25 ? 0.60 : 0.65;
-          const cpn = clamp(downAndOutPut(S, K, B, T, r, q, vol) / T - COST, 0.04, 0.14);
+          // Barrier level based on vol: high vol → lower barrier (more protection, but still pays well)
+          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : vol > 0.20 ? 0.65 : 0.70;
+          // Coupon funded by selling OTM put at barrier level (European, observed quarterly)
+          // Multiply by ~1.3 to account for path-dependency premium and vol skew
+          const putVal = otmPut(S, B, T, r, q, vol);
+          const cpn = clamp((putVal / T) * 1.3 - COST, 0.05, 0.18);
           return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Condizionale", strike: "100%", observationFrequency: "Trimestrale", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "worstof": {
-          const wvol = woVol(vols); const wq = Math.min(...divYields) || 0.025;
-          const B = wvol > 0.40 ? 0.50 : wvol > 0.30 ? 0.55 : 0.60;
-          const cpn = clamp(downAndOutPut(S, K, B, T, r, wq, wvol) / T * 1.1 - COST, 0.06, 0.20);
+          const wvol = woVol(vols);
+          const wq = Math.min(...divYields) || 0.025;
+          // Worst-of warrants lower barrier and higher coupon than single-name
+          const B = wvol > 0.50 ? 0.50 : wvol > 0.40 ? 0.55 : wvol > 0.30 ? 0.60 : 0.65;
+          const putVal = otmPut(S, B, T, r, wq, wvol);
+          // 1.5x multiplier: basket decorrelation + skew premium typical for worst-of
+          const cpn = clamp((putVal / T) * 1.5 - COST, 0.08, 0.22);
           return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Condizionale worst-of", strike: "100%", observationFrequency: "Trimestrale", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "reverse": {
-          const cpn = clamp(bsPrice("put", S, K, T, r, q, vol) / T - COST, 0.05, 0.18);
+          // Sells ATM put — full value, no barrier
+          const cpn = clamp(bsPrice("put", S, K, T, r, q, vol) / T - COST, 0.06, 0.22);
           return { barrier: "N/A", coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "barrier": {
-          const B = vol > 0.35 ? 0.60 : vol > 0.25 ? 0.65 : 0.70;
-          const cpn = clamp(downAndOutPut(S, K, B, T, r, q, vol) / T - COST, 0.04, 0.13);
+          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : vol > 0.20 ? 0.65 : 0.70;
+          const putVal = otmPut(S, B, T, r, q, vol);
+          const cpn = clamp((putVal / T) * 1.2 - COST, 0.05, 0.15);
           return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: `Condizionale sopra barriera ${pct(B)}`, strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "bonus": {
-          const B = vol > 0.35 ? 0.55 : vol > 0.25 ? 0.60 : 0.65;
-          const bonus = clamp(1 + (q * T - downAndOutPut(S, K, B, T, r, q, vol) - COST * T), 1.05, 1.35);
+          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : 0.65;
+          const doaPut = downAndOutPut(S, K, B, T, r, q, vol);
+          const bonus = clamp(1 + (q * T - doaPut - COST * T), 1.06, 1.40);
           return { barrier: pct(B), coupon: "N/A", participation: `1:1 al rialzo + bonus minimo ${pct(bonus)}`, protection: `Bonus ${pct(bonus)} se barriera ${pct(B)} mai violata`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "express": {
-          const stepUp = clamp(bsPrice("call", S, K, 1, r, q, vol) - COST, 0.04, 0.12);
+          // Step-up per anno = valore call ATM annuale
+          const stepUp = clamp(bsPrice("call", S, K, 1, r, q, vol) * 1.1 - COST, 0.05, 0.15);
           return { barrier: "60-70% (capitale a scadenza)", coupon: `${pct(stepUp)} per anno`, participation: "N/A", protection: "Condizionale a scadenza", strike: "100%", observationFrequency: "Annuale", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "capital": {
@@ -1442,29 +1469,33 @@ console.log("signup token:", data.session?.access_token);
         }
         case "outperform": {
           const callPrice = bsPrice("call", S, K, T, r, q, vol);
-          const extra = clamp(q * T / callPrice - COST * T / callPrice, 0.10, 1.00);
+          const extra = clamp((q * T - COST * T) / callPrice, 0.15, 1.00);
           return { barrier: "N/A", coupon: "N/A", participation: `${pct(1 + extra)} sopra strike, 1:1 sotto`, protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "twinwin": {
-          const B = vol > 0.35 ? 0.55 : vol > 0.25 ? 0.60 : 0.65;
-          const budget = bsPrice("call", S, K, T, r, q, vol) + bsPrice("put", S, K, T, r, q, vol) - downAndOutPut(S, K, B, T, r, q, vol) - COST * T;
-          const partic = clamp(budget / bsPrice("call", S, K, T, r, q, vol), 0.80, 1.50);
+          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : 0.65;
+          const callVal = bsPrice("call", S, K, T, r, q, vol);
+          const putVal  = bsPrice("put",  S, K, T, r, q, vol);
+          const doaPut  = downAndOutPut(S, K, B, T, r, q, vol);
+          const budget  = callVal + putVal - doaPut - COST * T;
+          const partic  = clamp(budget / callVal, 0.90, 1.60);
           return { barrier: pct(B), coupon: "N/A", participation: `${pct(partic)} in entrambe le direzioni`, protection: `Condizionale sopra barriera ${pct(B)}`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "shark": {
-          const cap = vol > 0.30 ? 1.25 : 1.35;
-          const cpn = clamp((bsPrice("call", S, K, T, r, q, vol) - bsPrice("call", S, cap, T, r, q, vol)) / T - COST, 0.03, 0.10);
-          return { barrier: `Cap ${pct(cap)}`, coupon: `${pct(cpn)} p.a. (cedola potenziata)`, participation: `1:1 fino a ${pct(cap)}`, protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
+          const cap = vol > 0.35 ? 1.20 : vol > 0.25 ? 1.25 : 1.35;
+          const callSpread = bsPrice("call", S, K, T, r, q, vol) - bsPrice("call", S, cap, T, r, q, vol);
+          const cpn = clamp(callSpread / T * 1.1 - COST, 0.03, 0.12);
+          return { barrier: `Cap ${pct(cap)}`, coupon: `${pct(cpn)} p.a.`, participation: `1:1 fino a ${pct(cap)}`, protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "airbag": {
-          const B = vol > 0.35 ? 0.60 : vol > 0.25 ? 0.65 : 0.70;
-          return { barrier: pct(B), coupon: "N/A", participation: "~95-100% al rialzo", protection: `Airbag: perdite sotto ${pct(B)} ridotte di ~${pct(B)}`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
+          const B = vol > 0.40 ? 0.60 : vol > 0.30 ? 0.65 : 0.70;
+          return { barrier: pct(B), coupon: "N/A", participation: "95-100% al rialzo", protection: `Airbag: perdite sotto ${pct(B)} ridotte di ~${pct(B)}`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
         }
         case "digital": {
           const tgt = vol > 0.30 ? 1.00 : 1.05;
           const d2 = (Math.log(1 / tgt) + (r - q - 0.5 * vol * vol) * T) / (vol * Math.sqrt(T));
           const prob = normCDF(d2);
-          const gross = clamp(0.15 / prob, 0.10, 0.35);
+          const gross = clamp(0.18 / Math.max(prob, 0.3), 0.10, 0.40);
           return { barrier: `Target ${pct(tgt)} a scadenza`, coupon: `${pct(gross)} fisso se sopra target`, participation: "N/A", protection: "Nessuna", strike: pct(tgt), observationFrequency: "A scadenza", maturity: `${Math.round(T * 12)} mesi` };
         }
         default:

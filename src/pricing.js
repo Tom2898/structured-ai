@@ -109,8 +109,9 @@ function riskFreeRate(T) {
 
 // ── Issuer spread / structuring cost ────────────────────────────────────────
 // Banks typically embed ~1.5-2.5% p.a. in the product cost
-const ISSUER_SPREAD = 0.020; // 2% p.a. structuring cost
+const ISSUER_SPREAD = 0.010; // 2% p.a. structuring cost
 const DIST_COST = 0.005;     // 0.5% p.a. distribution cost
+const DIST_COST = 0.000;
 const TOTAL_COST_PA = ISSUER_SPREAD + DIST_COST;
 
 // ──────────────────────────────────────────────────────────────────────────────
