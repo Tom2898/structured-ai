@@ -2900,3 +2900,6 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
 
 
 
+
+
+
