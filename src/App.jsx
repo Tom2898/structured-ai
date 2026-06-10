@@ -1343,180 +1343,10 @@ console.log("signup token:", data.session?.access_token);
     underlyingLockRef.current = null;
     setCompareSelected([]);
 
-    // ── Step 1: Fetch real market data (vol, div yield) for each underlying ──
-    let marketData = {};
-    try {
-      const { data: { session: mktSession } } = await supabase.auth.getSession();
-      const mktRes = await fetch("/api/market-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mktSession?.access_token}` },
-        body: JSON.stringify({ tickers: underlyings })
-      });
-      if (mktRes.ok) {
-        const mktJson = await mktRes.json();
-        marketData = mktJson.marketData || {};
-      }
-    } catch (_) { /* fallback to static ranges if market data fails */ }
-
-    // ── Step 2: Compute realistic terms per product using pricing models ──
-    // Convert horizon to years
-    const horizonYears = horizon.includes("36") ? 3 : horizon.includes("24") ? 2 : horizon.includes("18") ? 1.5 : 1;
-
-    // Build per-underlying market params
-    function getMarketParams(tickers) {
-      const vols = tickers.map(t => marketData[t]?.vol1Y || marketData[t.toUpperCase()]?.vol1Y || 0.28);
-      const divYields = tickers.map(t => marketData[t]?.divYield || marketData[t.toUpperCase()]?.divYield || 0.03);
-      return { vols, divYields, T: horizonYears };
-    }
-
-    // Pricing functions (Black-Scholes based, replicated from pricing.js)
-    function erf(x) {
-      const t = 1 / (1 + 0.3275911 * Math.abs(x));
-      const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-      return x >= 0 ? y : -y;
-    }
-    function normCDF(x) { return 0.5 * (1 + erf(x / Math.sqrt(2))); }
-    function bsPrice(type, S, K, T, r, q, vol) {
-      if (T <= 0 || vol <= 0) return Math.max(0, type === "call" ? S - K : K - S);
-      const d1 = (Math.log(S / K) + (r - q + 0.5 * vol * vol) * T) / (vol * Math.sqrt(T));
-      const d2 = d1 - vol * Math.sqrt(T);
-      return type === "call"
-        ? S * Math.exp(-q * T) * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)
-        : K * Math.exp(-r * T) * normCDF(-d2) - S * Math.exp(-q * T) * normCDF(-d1);
-    }
-    function rfr(T) { return T <= 1 ? 0.031 : T <= 2 ? 0.030 : 0.028; }
-    // Structuring cost: 1% p.a. (issuer spread only — distribution separate)
-    const COST = 0.010;
-    function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
-    function pct(x) { return `${Math.round(x * 1000) / 10}%`; }
-
-    // Worst-of vol: for Italian bank stocks (high individual vol, high correlation ~0.7)
-    // use max vol + correlation discount rather than averaging down
-    function woVol(vols, rho = 0.65) {
-      if (vols.length === 1) return vols[0];
-      const maxVol = Math.max(...vols);
-      const avgVol = vols.reduce((a, b) => a + b, 0) / vols.length;
-      // Effective worst-of vol is between avg and max, boosted by decorrelation
-      // For N=3 Italian banks rho~0.65: effective vol ≈ maxVol × (1 + (1-rho)/N)
-      return maxVol * (1 + (1 - rho) / vols.length);
-    }
-
-    // OTM European put at strike B (the actual coupon-financing instrument in Phoenix/Autocall)
-    // This is what the issuer sells to fund the coupon — much more valuable than down-and-out
-    function otmPut(S, B, T, r, q, vol) {
-      return bsPrice("put", S, B, T, r, q, vol);
-    }
-
-    // Down-and-out put (for bonus/twin-win where barrier is truly continuous)
-    function downAndOutPut(S, K, B, T, r, q, vol) {
-      const vanilla = bsPrice("put", S, K, T, r, q, vol);
-      const mu = (r - q - 0.5 * vol * vol) / (vol * vol);
-      const reflected = Math.pow(B / S, 2 * mu) * bsPrice("put", (B * B) / S, K, T, r, q, vol);
-      return Math.max(0, vanilla - reflected);
-    }
-
-    function computeTerms(productId, tickers) {
-      const { vols, divYields, T } = getMarketParams(tickers);
-      const vol = vols[0], q = divYields[0] || 0.03, r = rfr(T);
-      const S = 1, K = 1;
-      switch (productId) {
-        case "autocall": {
-          // Barrier level based on vol: high vol → lower barrier (more protection, but still pays well)
-          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : vol > 0.20 ? 0.65 : 0.70;
-          // Coupon funded by selling OTM put at barrier level (European, observed quarterly)
-          // Multiply by ~1.3 to account for path-dependency premium and vol skew
-          const putVal = otmPut(S, B, T, r, q, vol);
-          const cpn = clamp((putVal / T) * 1.3 - COST, 0.05, 0.18);
-          return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Condizionale", strike: "100%", observationFrequency: "Trimestrale", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "worstof": {
-          const wvol = woVol(vols);
-          const wq = Math.min(...divYields) || 0.025;
-          // Worst-of warrants lower barrier and higher coupon than single-name
-          const B = wvol > 0.50 ? 0.50 : wvol > 0.40 ? 0.55 : wvol > 0.30 ? 0.60 : 0.65;
-          const putVal = otmPut(S, B, T, r, wq, wvol);
-          // 1.5x multiplier: basket decorrelation + skew premium typical for worst-of
-          const cpn = clamp((putVal / T) * 1.5 - COST, 0.08, 0.22);
-          return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Condizionale worst-of", strike: "100%", observationFrequency: "Trimestrale", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "reverse": {
-          // Sells ATM put — full value, no barrier
-          const cpn = clamp(bsPrice("put", S, K, T, r, q, vol) / T - COST, 0.06, 0.22);
-          return { barrier: "N/A", coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "barrier": {
-          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : vol > 0.20 ? 0.65 : 0.70;
-          const putVal = otmPut(S, B, T, r, q, vol);
-          const cpn = clamp((putVal / T) * 1.2 - COST, 0.05, 0.15);
-          return { barrier: pct(B), coupon: `${pct(cpn)} p.a.`, participation: "N/A", protection: `Condizionale sopra barriera ${pct(B)}`, strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "bonus": {
-          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : 0.65;
-          const doaPut = downAndOutPut(S, K, B, T, r, q, vol);
-          const bonus = clamp(1 + (q * T - doaPut - COST * T), 1.06, 1.40);
-          return { barrier: pct(B), coupon: "N/A", participation: `1:1 al rialzo + bonus minimo ${pct(bonus)}`, protection: `Bonus ${pct(bonus)} se barriera ${pct(B)} mai violata`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "express": {
-          // Step-up per anno = valore call ATM annuale
-          const stepUp = clamp(bsPrice("call", S, K, 1, r, q, vol) * 1.1 - COST, 0.05, 0.15);
-          return { barrier: "60-70% (capitale a scadenza)", coupon: `${pct(stepUp)} per anno`, participation: "N/A", protection: "Condizionale a scadenza", strike: "100%", observationFrequency: "Annuale", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "capital": {
-          const bondFloor = Math.exp(-r * T);
-          const callPrice = bsPrice("call", S, K, T, r, q, vol);
-          const partic = clamp((1 - bondFloor - COST * T) / callPrice, 0.70, 1.50);
-          return { barrier: "N/A", coupon: "N/A", participation: `${pct(partic)} al rialzo`, protection: "100% del capitale a scadenza", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "outperform": {
-          const callPrice = bsPrice("call", S, K, T, r, q, vol);
-          const extra = clamp((q * T - COST * T) / callPrice, 0.15, 1.00);
-          return { barrier: "N/A", coupon: "N/A", participation: `${pct(1 + extra)} sopra strike, 1:1 sotto`, protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "twinwin": {
-          const B = vol > 0.40 ? 0.55 : vol > 0.30 ? 0.60 : 0.65;
-          const callVal = bsPrice("call", S, K, T, r, q, vol);
-          const putVal  = bsPrice("put",  S, K, T, r, q, vol);
-          const doaPut  = downAndOutPut(S, K, B, T, r, q, vol);
-          const budget  = callVal + putVal - doaPut - COST * T;
-          const partic  = clamp(budget / callVal, 0.90, 1.60);
-          return { barrier: pct(B), coupon: "N/A", participation: `${pct(partic)} in entrambe le direzioni`, protection: `Condizionale sopra barriera ${pct(B)}`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "shark": {
-          const cap = vol > 0.35 ? 1.20 : vol > 0.25 ? 1.25 : 1.35;
-          const callSpread = bsPrice("call", S, K, T, r, q, vol) - bsPrice("call", S, cap, T, r, q, vol);
-          const cpn = clamp(callSpread / T * 1.1 - COST, 0.03, 0.12);
-          return { barrier: `Cap ${pct(cap)}`, coupon: `${pct(cpn)} p.a.`, participation: `1:1 fino a ${pct(cap)}`, protection: "Nessuna", strike: "100%", observationFrequency: "N/A", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "airbag": {
-          const B = vol > 0.40 ? 0.60 : vol > 0.30 ? 0.65 : 0.70;
-          return { barrier: pct(B), coupon: "N/A", participation: "95-100% al rialzo", protection: `Airbag: perdite sotto ${pct(B)} ridotte di ~${pct(B)}`, strike: "100%", observationFrequency: "Continua", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        case "digital": {
-          const tgt = vol > 0.30 ? 1.00 : 1.05;
-          const d2 = (Math.log(1 / tgt) + (r - q - 0.5 * vol * vol) * T) / (vol * Math.sqrt(T));
-          const prob = normCDF(d2);
-          const gross = clamp(0.18 / Math.max(prob, 0.3), 0.10, 0.40);
-          return { barrier: `Target ${pct(tgt)} a scadenza`, coupon: `${pct(gross)} fisso se sopra target`, participation: "N/A", protection: "Nessuna", strike: pct(tgt), observationFrequency: "A scadenza", maturity: `${Math.round(T * 12)} mesi` };
-        }
-        default:
-          return null;
-      }
-    }
-
-    // Pre-compute terms for each allowed product × underlying combination
+    // Build product constraint
     const allowedProducts = selectedProductIds.length > 0
       ? PRODUCTS.filter(p => selectedProductIds.includes(p.id))
       : PRODUCTS;
-
-    const pricedTermsStr = allowedProducts.map(p => {
-      const terms = computeTerms(p.id, underlyings);
-      if (!terms) return "";
-      const mktInfo = underlyings.map(t => {
-        const d = marketData[t] || marketData[t.toUpperCase()] || {};
-        return d.vol1Y ? `${t}: vol ${pct(d.vol1Y)}, div ${pct(d.divYield || 0)}, spot ${d.spot || "N/A"}` : `${t}: dati non disponibili`;
-      }).join("; ");
-      return `  - ${p.id} (${p.name}): barriera=${terms.barrier}, cedola=${terms.coupon}, partecipazione=${terms.participation}, scadenza=${terms.maturity} | Dati: ${mktInfo}`;
-    }).filter(Boolean).join("\n");
 
     const productListStr = allowedProducts.map(p => `  - ${p.id}: ${p.name} (${p.category}, rischio ${RISK_COLOR[p.risk].label})`).join("\n");
 
@@ -1539,15 +1369,30 @@ BASKET INSTRUCTION: The client selected ${underlyings.length} underlyings. You M
 ALLOWED PRODUCT STRUCTURES — propose ONLY from this list:
 ${productListStr}
 
-PRE-COMPUTED TERMS (Black-Scholes + real market data) — USE THESE EXACT VALUES, do not invent different numbers:
-${pricedTermsStr}
+REALISM RULES — terms must reflect actual market conditions for European structured products 2024-2025.
+Pricing is forward-based (div yield lowers the forward) and accounts for put skew (OTM puts are 5-10 vols more expensive than ATM due to negative equity skew), so coupons are materially higher than naive BS would suggest:
+- Autocall/Phoenix: barriers 50-70%; coupons 6-16% p.a. (low-vol index ~6-8%, mid-vol stock ~9-13%, high-vol stock ~13-18%)
+- Capital Protected Notes: participation 60-130% (lower when rates are high, bond floor is expensive)
+- Reverse Convertible: coupons 7-20% p.a. (ATM put value; high-vol single stock can reach 18-22%)
+- Barrier Reverse Conv.: barriers 55-75%; coupons 6-16% p.a. (skew-adjusted barrier put adds 2-4% vs flat-vol estimate)
+- Bonus Certificate: bonus level 108-145%; barriers 50-70% American/continuous
+- Express Certificate: step-up 6-18% per year; annual observations; capital barrier 55-70%
+- Worst-of Autocall: coupons 10-25% p.a. (basket decorrelation + skew; 3-stock basket adds ~30-40% vs single name)
+- Outperformance: participation 115-180% above strike (funded by div yield; high-div stocks → higher leverage)
+- Twin Win: participation 90-160% both directions; barrier 50-70%
+- Digital/Binary: gross coupon 12-35% conditional on target; probability-weighted net coupon 8-18%
+- Shark Note: coupon 4-12% p.a. from capped call spread
+- Airbag: participation 85-105% upside; airbag absorbs ~60-70% of downside below barrier
+- Maturities: 12, 18, 24, 36 months — match to client horizon
+- High-vol underlying (>35%): lower barrier 50-60%, higher coupon; low-vol index (<20%): barrier 65-75%, moderate coupon
+- Dividend yield matters: high-div stocks fund higher leverage in outperformance; lower put premium in barrier products
+- Payoff scenarios must use actual numbers based on the terms proposed
 
 CRITICAL RULES:
 1. Each proposal's "underlying.suggested" must contain ONLY tickers from: [${underlyings.map(u => `"${u}"`).join(", ")}]
 2. Use ONLY productIds from the allowed list above
 3. Propose EXACTLY 3 structures that best fit the profile
-4. USE THE EXACT barrier, coupon, participation and maturity values from PRE-COMPUTED TERMS above — these are derived from real implied volatility and Black-Scholes pricing
-5. Payoff scenarios MUST use the exact numbers from the pre-computed terms (e.g. if coupon is 8.5% p.a. quarterly, use exactly 2.125% per quarter in the payoff)
+4. Terms must be realistic and internally consistent
 
 Reply ONLY with this JSON (no text outside):
 {
@@ -1635,7 +1480,14 @@ Reply ONLY with this JSON (no text outside):
       ? "\nIMPORTANTE: includi SOLO certificati ancora attivi e quotati. Escludi tassativamente certificati già scaduti, rimborsati anticipatamente (autocalled/early redeemed) o cancellati dalla quotazione."
       : "";
 
-    const prompt = `Cerca su borsaitaliana.it o euronext.com certificati strutturati attivi simili a: ${proposal.productName} su ${underlying}. Rispondi SOLO con JSON: {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome>","scadenza":"<data>","similarity":"Alta|Media","fonte":"<url>"}],"note":"<commento>"}`;
+    const prompt = `Sei un ricercatore di prodotti finanziari. Cerca su borsaitaliana.it, euronext.com o certificatiederivati.it certificati strutturati di tipo "${proposal.productName}" che abbiano come sottostante uno o più di questi titoli: ${underlying}. ${activeFilter}
+
+NON filtrare per cedola, barriera o scadenza esatte — cerca certificati dello stesso TIPO con gli stessi sottostanti o sottostanti simili. Restituisci fino a 3 risultati reali trovati online, anche se i termini differiscono leggermente.
+
+Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
+{"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome breve>","scadenza":"<MM/YYYY>","similarity":"Alta|Media","fonte":"<url pagina>"}],"note":"<commento breve o stringa vuota>"}
+
+Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`; ${proposal.productName} su ${underlying}. Rispondi SOLO con JSON: {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome>","scadenza":"<data>","similarity":"Alta|Media","fonte":"<url>"}],"note":"<commento>"}`;
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
@@ -1649,7 +1501,7 @@ Reply ONLY with this JSON (no text outside):
         const waitSec = data?.retryAfter || 5;
         throw Object.assign(new Error("rate_limit"), { retryAfter: waitSec });
       }
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(typeof data.error === "string" ? data.error : data.error.message);
       // Grab the LAST text block (final answer after web search)
       const textBlocks = (data.content || []).filter(b => b.type === "text" && b.text);
       const rawText = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text : "";
@@ -1666,6 +1518,8 @@ Reply ONLY with this JSON (no text outside):
           setIsinResults(prev => ({ ...prev, [index]: { isins: [], note: "Errore nel parsing dei risultati." } }));
         }
       }
+      // ✅ FIX: stop spinner after successful response
+      setIsinLoading(prev => ({ ...prev, [index]: false }));
     } catch (err) {
       const isRateLimit = err?.message === "rate_limit";
       const MAX_ISIN_RETRIES = 4;
