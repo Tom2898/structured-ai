@@ -1487,7 +1487,7 @@ NON filtrare per cedola, barriera o scadenza esatte — cerca certificati dello 
 Rispondi ESCLUSIVAMENTE con questo JSON e nient'altro, senza testo prima o dopo, senza markdown:
 {"isins":[{"isin":"<ISIN>","emittente":"<emittente>","nome":"<nome breve>","scadenza":"<MM/YYYY>","similarity":"Alta|Media","fonte":"<url pagina>"}],"note":"<commento breve o stringa vuota>"}
 
-Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"``;
+Se non trovi proprio nulla rispondi: {"isins":[],"note":"Nessun certificato trovato"}`;
 
     try {
       const { data: { session: isinSession } } = await supabase.auth.getSession();
