@@ -1025,6 +1025,8 @@ export default function App() {
   React.useEffect(() => { try { localStorage.setItem("sai_underlyings", JSON.stringify(underlyings)); } catch {} }, [underlyings]);
   React.useEffect(() => { try { localStorage.setItem("sai_selectedProductIds", JSON.stringify(selectedProductIds)); } catch {} }, [selectedProductIds]);
   React.useEffect(() => { try { sessionStorage.setItem("sai_isinAnalysis", JSON.stringify(isinAnalysisResult)); } catch {} }, [isinAnalysisResult]);
+  React.useEffect(() => { try { sessionStorage.setItem("sai_isinAnalysisUnderlyings", JSON.stringify(isinAnalysisUnderlyings)); } catch {} }, [isinAnalysisUnderlyings]);
+  React.useEffect(() => { try { sessionStorage.setItem("sai_isinAnalysisScenarios", JSON.stringify(isinAnalysisScenarios)); } catch {} }, [isinAnalysisScenarios]);
 
   const isPro = user?.plan === "pro";
   const isRetail = user?.plan === "retail";
@@ -2897,6 +2899,12 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
