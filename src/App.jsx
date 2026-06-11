@@ -965,6 +965,9 @@ export default function App() {
   const [isinAnalysisResult, setIsinAnalysisResult] = useState(() => { try { return JSON.parse(sessionStorage.getItem("sai_isinAnalysis") || "null"); } catch { return null; } });
   const [isinAnalysisError, setIsinAnalysisError] = useState("");
   const [isinAnalysisCount, setIsinAnalysisCount] = useState(0);
+  const [isinAnalysisUnderlyings, setIsinAnalysisUnderlyings] = useState(() => { try { return JSON.parse(sessionStorage.getItem("sai_isinAnalysisUnderlyings") || "null"); } catch { return null; } });
+  const [isinAnalysisScenarios, setIsinAnalysisScenarios] = useState(() => { try { return JSON.parse(sessionStorage.getItem("sai_isinAnalysisScenarios") || "null"); } catch { return null; } });
+  const [isinAnalysisLoadingStep, setIsinAnalysisLoadingStep] = useState("");
   const ISIN_ANALYSIS_LIMIT = 5;
   const [cancelLoading, setCancelLoading] = useState(false);
   const [switchAnnualLoading, setSwitchAnnualLoading] = useState(false);
@@ -2899,6 +2902,7 @@ function ProposalCard({ proposal, index, isPro, canSearchISIN, isRetail, userUnd
     </div>
   );
 }
+
 
 
 
