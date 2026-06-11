@@ -2091,6 +2091,77 @@ ${proposal.payoff ? `<div class="section">
                     <div style={{ fontSize:24, marginBottom:12 }}>üîç</div>
                     Ricerca in corso su Euronext e fonti pubbliche...
                   </div>
+
+                {/* Sezione 2 ó Analisi Sottostanti */}
+                {isinAnalysisUnderlyings && isinAnalysisUnderlyings.length > 0 && (
+                  <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:"2rem", marginTop:24 }}>
+                    <div style={{ fontSize:11, letterSpacing:"0.1em", color:"var(--muted)", marginBottom:16 }}>ANALISI SOTTOSTANTI</div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                        <thead><tr style={{ borderBottom:"2px solid var(--border)" }}>
+                          {["Sottostante","Spot","Strike","Barriera","Dist. Barriera","Var. 1Y","Trend","Note"].map(h => (
+                            <th key={h} style={{ textAlign:"left", padding:"6px 10px", fontSize:10, letterSpacing:"0.06em", color:"var(--muted)", fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
+                        </tr></thead>
+                        <tbody>
+                          {isinAnalysisUnderlyings.map((u, i) => {
+                            const distColor = u.distanzaBarriera > 20 ? "#2e7d32" : u.distanzaBarriera > 10 ? "#e65100" : "#c62828";
+                            const trendIcon = u.trend === "bullish" ? "?" : u.trend === "bearish" ? "?" : "?";
+                            const trendColor = u.trend === "bullish" ? "#2e7d32" : u.trend === "bearish" ? "#c62828" : "var(--muted)";
+                            return (
+                              <tr key={i} style={{ borderBottom:"1px solid var(--border)" }}>
+                                <td style={{ padding:"10px 10px", fontWeight:600, color:"var(--accent)" }}><div>{u.ticker}</div><div style={{ fontSize:11, fontWeight:400, color:"var(--muted)" }}>{u.name}</div></td>
+                                <td style={{ padding:"10px 10px" }}>{u.spot ? u.spot.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2}) : "N/D"}</td>
+                                <td style={{ padding:"10px 10px" }}>{u.strike ? u.strike.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2}) : "N/D"}</td>
+                                <td style={{ padding:"10px 10px" }}>{u.barriera ? u.barriera.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2}) : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", fontWeight:600, color:distColor }}>{u.distanzaBarriera != null ? `${u.distanzaBarriera.toFixed(1)}%` : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", color: u.var1Y >= 0 ? "#2e7d32" : "#c62828", fontWeight:500 }}>{u.var1Y != null ? `${u.var1Y >= 0 ? "+" : ""}${u.var1Y.toFixed(1)}%` : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", color:trendColor, fontWeight:600 }}>{trendIcon} {u.trend || "N/D"}</td>
+                                <td style={{ padding:"10px 10px", fontSize:11, color:"var(--muted)", maxWidth:180 }}>{u.note || ""}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sezione 3 ó Scenario Analysis */}
+                {isinAnalysisScenarios && isinAnalysisScenarios.scenarios && (
+                  <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:"2rem", marginTop:24 }}>
+                    <div style={{ fontSize:11, letterSpacing:"0.1em", color:"var(--muted)", marginBottom:16 }}>SCENARIO ANALYSIS A SCADENZA</div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                        <thead><tr style={{ borderBottom:"2px solid var(--border)" }}>
+                          {["Scenario","Perf. Sottostante","Rimborso Capitale","Cedole Totali","Rendimento Totale","Esito","Descrizione"].map(h => (
+                            <th key={h} style={{ textAlign:"left", padding:"6px 10px", fontSize:10, letterSpacing:"0.06em", color:"var(--muted)", fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
+                        </tr></thead>
+                        <tbody>
+                          {isinAnalysisScenarios.scenarios.map((sc, i) => {
+                            const isPos = sc.rendimentoTotale >= 0;
+                            const rowBg = sc.esito === "perdita" ? "rgba(198,40,40,0.04)" : (sc.esito === "rimborso_pieno" || sc.esito === "autocall") ? "rgba(46,125,50,0.04)" : "transparent";
+                            const esitoLabel = { rimborso_pieno:"? Rimborso pieno", rimborso_parziale:"? Rimborso parziale", perdita:"? Perdita", autocall:"? Autocall" }[sc.esito] || sc.esito;
+                            const esitoColor = { rimborso_pieno:"#2e7d32", rimborso_parziale:"#e65100", perdita:"#c62828", autocall:"#1565c0" }[sc.esito] || "var(--text)";
+                            return (
+                              <tr key={i} style={{ borderBottom:"1px solid var(--border)", background:rowBg }}>
+                                <td style={{ padding:"10px 10px", fontWeight:600 }}>{sc.label}</td>
+                                <td style={{ padding:"10px 10px", fontWeight:600, color: sc.perfSottostante >= 0 ? "#2e7d32" : "#c62828" }}>{sc.perfSottostante >= 0 ? "+" : ""}{sc.perfSottostante}%</td>
+                                <td style={{ padding:"10px 10px" }}>{sc.payoffPct != null ? `${sc.payoffPct.toFixed(1)}%` : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", color:"#1565c0" }}>{sc.cedoleTotali != null ? `+${sc.cedoleTotali.toFixed(1)}%` : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", fontWeight:700, color: isPos ? "#2e7d32" : "#c62828" }}>{sc.rendimentoTotale != null ? `${isPos?"+":""}${sc.rendimentoTotale.toFixed(1)}%` : "N/D"}</td>
+                                <td style={{ padding:"10px 10px", fontWeight:600, color:esitoColor, whiteSpace:"nowrap" }}>{esitoLabel}</td>
+                                <td style={{ padding:"10px 10px", fontSize:11, color:"var(--muted)", maxWidth:200 }}>{sc.descrizione}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {isinAnalysisScenarios.note && <div style={{ marginTop:12, fontSize:11, color:"var(--muted)", fontStyle:"italic" }}>{isinAnalysisScenarios.note}</div>}
+                  </div>
+                )}
                 )}
 
                 {/* Result */}
