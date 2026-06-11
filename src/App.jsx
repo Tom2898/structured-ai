@@ -1175,6 +1175,8 @@ IMPORTANTE: Usa esclusivamente dati trovati online. Se non trovi informazioni pe
       setIsinAnalysisResult({ isin, text, timestamp: new Date().toISOString() });
 
       // -- STEP 2: Analisi sottostanti ------------------------------------------
+      await new Promise(r => setTimeout(r, 3000));
+
       setIsinAnalysisLoadingStep("Analisi sottostanti in corso...");
       try {
         const promptUnderlyings = `Dati del certificato ISIN ${isin}:\n${cedContext}\nCerca online i dati di mercato aggiornati per ciascun sottostante di questo certificato.\nRispondi SOLO con questo JSON, nessun testo fuori:\n{"underlyings":[{"ticker":"<TICKER>","name":"<nome>","spot":0.00,"strike":0.00,"barriera":0.00,"distanzaBarriera":0.00,"var1Y":0.00,"trend":"bullish|bearish|neutro","note":"<commento>"}]}\nDove distanzaBarriera = (spot - barriera) / spot * 100`;
@@ -1187,6 +1189,8 @@ IMPORTANTE: Usa esclusivamente dati trovati online. Se non trovi informazioni pe
       } catch(e) { console.error("underlyings error",e); }
 
       // -- STEP 3: Scenario analysis --------------------------------------------
+      await new Promise(r => setTimeout(r, 3000));
+
       setIsinAnalysisLoadingStep("Calcolo scenari in corso...");
       try {
         const promptScenarios = `Dati del certificato ISIN ${isin}:\n${cedContext}\nCalcola gli scenari di payoff a scadenza per 7 livelli di performance del sottostante worst-of.\nRispondi SOLO con questo JSON, nessun testo fuori:\n{"scenarios":[{"label":"<etichetta>","perfSottostante":-40,"payoffPct":0.00,"cedoleTotali":0.00,"rendimentoTotale":0.00,"esito":"rimborso_pieno|rimborso_parziale|perdita|autocall","descrizione":"<spiegazione breve>"}],"note":"<nota metodologica>"}\nI 7 scenari: -40%, -25%, -15%, 0%, +15%, +30%, +50%. Per ogni scenario: payoffPct=rimborso capitale%, cedoleTotali=somma cedole%, rendimentoTotale=payoffPct+cedoleTotali-100`;
