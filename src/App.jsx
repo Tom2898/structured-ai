@@ -1173,6 +1173,32 @@ IMPORTANTE: Usa esclusivamente dati trovati online. Se non trovi informazioni pe
 
       const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
       setIsinAnalysisResult({ isin, text, timestamp: new Date().toISOString() });
+
+      // -- STEP 2: Analisi sottostanti ------------------------------------------
+      setIsinAnalysisLoadingStep("Analisi sottostanti in corso...");
+      try {
+        const promptUnderlyings = `Dati del certificato ISIN ${isin}:\n${cedContext}\nCerca online i dati di mercato aggiornati per ciascun sottostante di questo certificato.\nRispondi SOLO con questo JSON, nessun testo fuori:\n{"underlyings":[{"ticker":"<TICKER>","name":"<nome>","spot":0.00,"strike":0.00,"barriera":0.00,"distanzaBarriera":0.00,"var1Y":0.00,"trend":"bullish|bearish|neutro","note":"<commento>"}]}\nDove distanzaBarriera = (spot - barriera) / spot * 100`;
+        const resU = await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${s?.access_token}`,"x-turnstile-token":turnstileToken||""}, body:JSON.stringify({ prompt:promptUnderlyings, useWebSearch:true, skipUsage:true, isinSource:"analysis" }) });
+        const dataU = await resU.json();
+        const textU = (dataU.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+        const cleanU = textU.replace(/```json\s*/g,"").replace(/```\s*/g,"").trim();
+        const matchU = cleanU.match(/\{[\s\S]*"underlyings"[\s\S]*\}/);
+        if (matchU) setIsinAnalysisUnderlyings(JSON.parse(matchU[0]).underlyings);
+      } catch(e) { console.error("underlyings error",e); }
+
+      // -- STEP 3: Scenario analysis --------------------------------------------
+      setIsinAnalysisLoadingStep("Calcolo scenari in corso...");
+      try {
+        const promptScenarios = `Dati del certificato ISIN ${isin}:\n${cedContext}\nCalcola gli scenari di payoff a scadenza per 7 livelli di performance del sottostante worst-of.\nRispondi SOLO con questo JSON, nessun testo fuori:\n{"scenarios":[{"label":"<etichetta>","perfSottostante":-40,"payoffPct":0.00,"cedoleTotali":0.00,"rendimentoTotale":0.00,"esito":"rimborso_pieno|rimborso_parziale|perdita|autocall","descrizione":"<spiegazione breve>"}],"note":"<nota metodologica>"}\nI 7 scenari: -40%, -25%, -15%, 0%, +15%, +30%, +50%. Per ogni scenario: payoffPct=rimborso capitale%, cedoleTotali=somma cedole%, rendimentoTotale=payoffPct+cedoleTotali-100`;
+        const resS = await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${s?.access_token}`,"x-turnstile-token":turnstileToken||""}, body:JSON.stringify({ prompt:promptScenarios, useWebSearch:false, skipUsage:true }) });
+        const dataS = await resS.json();
+        const textS = (dataS.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+        const cleanS = textS.replace(/```json\s*/g,"").replace(/```\s*/g,"").trim();
+        const matchS = cleanS.match(/\{[\s\S]*"scenarios"[\s\S]*\}/);
+        if (matchS) setIsinAnalysisScenarios(JSON.parse(matchS[0]));
+      } catch(e) { console.error("scenarios error",e); }
+
+      setIsinAnalysisLoadingStep("");
     } catch (err) {
       setIsinAnalysisError("Errore di connessione. Riprova.");
     } finally {
